@@ -1,0 +1,39 @@
+#:kivy 1.4.1
+
+RunningGame:
+
+<RunningGame>:
+	canvas:
+		Color: 
+			rgb: (.16796875, 0.8125, 1.)
+		Rectangle:
+			size: (root.size[0], root.size[1]*75)
+			pos: root.pos
+		Color:
+			rgb: (1., 1., 1.)
+		Rectangle:
+			source: 'media/art/backgrounds/skybackground1.png'
+			pos: root.pos
+			size: self.size
+			
+		
+	FloatLayout:
+		DebugPanel:
+            size_hint: (.3, .1)
+            pos: (root.pos[0]+root.size[0]*.34, root.pos[1]+root.height*.89)
+
+
+<DebugPanel>:
+    fps: root.fps
+    Label:
+        pos: root.pos
+        size: root.size
+        font_size: root.size[1]*.28
+        halign: 'center'
+        valign: 'middle'
+        color: (1,1,1,1)
+        text: 'FPS: ' + root.fps if root.fps != None else 'FPS:'
+        on_touch_down: root.update_fps(None)
+			
+
+
