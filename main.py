@@ -10,6 +10,9 @@ from kivy.clock import Clock
 import random
 from kivy.graphics import Rectangle, Color, Callback, Rotate, PushMatrix, PopMatrix, Translate, Quad
 from kivy.properties import NumericProperty, StringProperty, ObjectProperty, BooleanProperty
+from kivy.lang import Builder
+from kivyparticle.engine import *
+import xml.dom
 
 def random_variance(base, variance):
     return base + variance * (random.random() * 2.0 - 1.0)
@@ -56,6 +59,8 @@ class PlayerCharacter(Widget):
         self.y = Window.height *.5
         self.size = (82, 150)
         self.render_dict = dict()
+        self.landing_fx = ParticleEffects()
+        self.add_widget(self.landing_fx)
         Clock.schedule_once(self._update)
         Clock.schedule_once(self.update_anim_frame_counter, .25)
 
@@ -69,7 +74,7 @@ class PlayerCharacter(Widget):
             if self.x >= each.x - each.size[0] * .5 and self.x <= each.x + each.size[0] * .5:
                 if each.y + each.size[1]*.5 >= self.y - self.size[1] *.5 and each.y + each.size[1]*.5 - 10 < self.y - self.size[1] *.5:
                     self.isOnGround = True
-                    self.y = each.y + each.size[1]*.5 + self.size[1] *.5 
+                    self.y = each.y + each.size[1]*.5 + self.size[1] *.5    
                     return
 
         self.isOnGround = False
@@ -85,6 +90,7 @@ class PlayerCharacter(Widget):
         Clock.schedule_once(self.update_anim_frame_counter, .25)
                     
     def _advance_time(self, dt):
+        landed = False
         gravity = self.gravity
         self._check_collision()
         if self.isOnGround and not self.isMidJump:
@@ -100,6 +106,7 @@ class PlayerCharacter(Widget):
                 self.numJumps -= 1
             self.isJumping = False
             Clock.schedule_once(self._set_jumping, .25)
+            self.landing_fx.emit_dust()
             
         if not self.isOnGround:
             self.y_velocity -= gravity * dt
@@ -221,9 +228,23 @@ class ScrollingForeground(Widget):
             else:           
                 self.platforms_dict[platform]['translate'].xy = (platform.x, platform.y)
 
+class ParticleEffects(Widget):
+    landing_dust = ObjectProperty(ParticleSystem)
+
+    def emit_dust(self, name = 'ParticleEffects/templates/sun.pex'):
+        with self.canvas:
+            self.landing_dust = ParticleSystem(name)
+            self.landing_dust.emitter_x = self.parent.x
+            self.landing_dust.emitter_y = self.parent.y    
+            self.landing_dust.start(duration = .01)
+            print 'emitting dust'
+        return          
 
 Factory.register('RunningGame', RunningGame)
 Factory.register('DebugPanel', DebugPanel)
+Factory.register('ParticleEffects', ParticleEffects)
+
+# Builder.load_file('ParticleEffects/particlebuilder.kv')
 
 class RunningGameApp(App):
     def build(self):

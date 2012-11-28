@@ -21,7 +21,16 @@ RunningGame:
 		DebugPanel:
             size_hint: (.3, .1)
             pos: (root.pos[0]+root.size[0]*.34, root.pos[1]+root.height*.89)
+        ParticleEffects:
+        	auto_bring_to_front: True
+        	size_hint: (.2,.2)
+        	pos: (200,200)
 
+<ParticleEffects>:
+	FloatLayout:
+		auto_bring_to_front: True
+		size: root.size
+		pos: root.pos
 
 <DebugPanel>:
     fps: root.fps
