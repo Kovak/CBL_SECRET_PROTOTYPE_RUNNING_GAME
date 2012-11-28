@@ -12,7 +12,7 @@ from kivy.graphics import Rectangle, Color, Callback, Rotate, PushMatrix, PopMat
 from kivy.properties import NumericProperty, StringProperty, ObjectProperty, BooleanProperty
 from kivy.lang import Builder
 from kivyparticle.engine import *
-import xml.dom
+from kivy.input.motionevent import MotionEvent
 
 def random_variance(base, variance):
     return base + variance * (random.random() * 2.0 - 1.0)
@@ -26,6 +26,7 @@ class DebugPanel(Widget):
 
 class RunningGame(Widget):
     foreground = ObjectProperty(None)
+    swipe_up = BooleanProperty(False)
 
     def __init__(self, **kwargs):
         super(RunningGame, self).__init__(**kwargs)
@@ -33,14 +34,22 @@ class RunningGame(Widget):
         self.add_widget(self.player_character)
         self.foreground = ScrollingForeground()
         self.add_widget(self.foreground)
-        button = Button(text='Jump', pos=(Window.width * .2, 500))
-        button.bind(on_press = self.jump_button_callback)
-        self.add_widget(button)
         self.landing_fx = ParticleEffects()
         self.add_widget(self.landing_fx)
 
-    def jump_button_callback(self, instance):   
-        self.player_character.isJumping = True
+    def on_touch_down(self, touch):
+        pass
+
+    def on_touch_up(self, touch):
+        if self.swipe_up == True:
+            self.player_character.isJumping = True
+            self.swipe_up = False
+
+    def on_touch_move(self, touch):
+        if touch.y > touch.oy and abs(touch.y - touch.oy) > abs(touch.x - touch.ox):
+            self.swipe_up = True
+        else:
+            self.swipe_up = False
 
 class PlayerCharacter(Widget):
     texture = StringProperty(None)
