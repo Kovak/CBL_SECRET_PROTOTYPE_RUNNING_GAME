@@ -36,6 +36,8 @@ class RunningGame(Widget):
         button = Button(text='Jump', pos=(Window.width * .2, 500))
         button.bind(on_press = self.jump_button_callback)
         self.add_widget(button)
+        self.landing_fx = ParticleEffects()
+        self.add_widget(self.landing_fx)
 
     def jump_button_callback(self, instance):   
         self.player_character.isJumping = True
@@ -59,8 +61,6 @@ class PlayerCharacter(Widget):
         self.y = Window.height *.5
         self.size = (82, 150)
         self.render_dict = dict()
-        self.landing_fx = ParticleEffects()
-        self.add_widget(self.landing_fx)
         Clock.schedule_once(self._update)
         Clock.schedule_once(self.update_anim_frame_counter, .25)
 
@@ -106,7 +106,7 @@ class PlayerCharacter(Widget):
                 self.numJumps -= 1
             self.isJumping = False
             Clock.schedule_once(self._set_jumping, .25)
-            self.landing_fx.emit_dust()
+            self.parent.landing_fx.emit_dust(.1)
             
         if not self.isOnGround:
             self.y_velocity -= gravity * dt
@@ -231,14 +231,18 @@ class ScrollingForeground(Widget):
 class ParticleEffects(Widget):
     landing_dust = ObjectProperty(ParticleSystem)
 
-    def emit_dust(self, name = 'ParticleEffects/templates/sun.pex'):
+    def emit_dust(self, dt, name = 'ParticleEffects/templates/jellyfish.pex'):
         with self.canvas:
             self.landing_dust = ParticleSystem(name)
-            self.landing_dust.emitter_x = self.parent.x
-            self.landing_dust.emitter_y = self.parent.y    
-            self.landing_dust.start(duration = .01)
-            print 'emitting dust'
-        return          
+            self.landing_dust.emitter_x = self.parent.player_character.x
+            self.landing_dust.emitter_y = self.parent.player_character.y - self.parent.player_character.size[1]*.35  
+            self.landing_dust.start(duration = .1)
+            Clock.schedule_once(self.landing_dust.stop, timeout = .1)
+            
+            print dir(PlayerCharacter)
+        return
+
+
 
 Factory.register('RunningGame', RunningGame)
 Factory.register('DebugPanel', DebugPanel)
