@@ -5,6 +5,7 @@ from kivy.uix.widget import Widget
 from kivy.graphics.texture import Texture
 from kivy.core.window import Window
 from kivy.uix.image import Image
+from kivy.core.image import Image as CoreImage
 from kivy.uix.button import Button
 from kivy.clock import Clock
 import random
@@ -31,10 +32,12 @@ class RunningGame(Widget):
     def __init__(self, **kwargs):
         super(RunningGame, self).__init__(**kwargs)
         self.player_character = PlayerCharacter(parent = self)
+        self.midground = ScrollingMidground()
         self.foreground = ScrollingForeground()
+        self.landing_fx = ParticleEffects()
+        self.add_widget(self.midground)
         self.add_widget(self.foreground)
         self.add_widget(self.player_character)
-        self.landing_fx = ParticleEffects()
         self.add_widget(self.landing_fx)
 
     def on_touch_down(self, touch):
@@ -72,6 +75,7 @@ class PlayerCharacter(Widget):
         self.render_dict = dict()
         Clock.schedule_once(self._update)
         Clock.schedule_once(self.update_anim_frame_counter, .25)
+
 
     def _update(self, dt):
         self._advance_time(dt)
@@ -257,13 +261,26 @@ class ParticleEffects(Widget):
             print dir(PlayerCharacter)
         return
 
+class ScrollingMidground(Widget):
+    def __init__(self, **kwargs):
+        super(ScrollingMidground, self).__init__(**kwargs)
 
+        with self.canvas:
+            texture = CoreImage('media/art/midground_objects/testhouse.png').texture
+            texture.wrap = 'mirrored_repeat'
+            self.rect_1 = Rectangle(texture=texture, size=(Window.size[0],Window.size[1]*.25), pos=(0,Window.size[1]*.375))
+
+        Clock.schedule_interval(self.txupdate, 0)
+
+    def txupdate(self, dt):
+        t = Clock.get_boottime()
+        print t
+        self.rect_1.tex_coords = -(t * 0.1), 0, -(t * 0.1 + 1), 0, -(t * 0.1 + 1), -1, -(t * 0.1), -1
+        
 
 Factory.register('RunningGame', RunningGame)
 Factory.register('DebugPanel', DebugPanel)
-Factory.register('ParticleEffects', ParticleEffects)
 
-# Builder.load_file('ParticleEffects/particlebuilder.kv')
 
 class RunningGameApp(App):
     def build(self):
