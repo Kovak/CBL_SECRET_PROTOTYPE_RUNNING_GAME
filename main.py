@@ -32,9 +32,11 @@ class RunningGame(Widget):
     def __init__(self, **kwargs):
         super(RunningGame, self).__init__(**kwargs)
         self.player_character = PlayerCharacter(parent = self)
-        self.midground = ScrollingMidground()
         self.foreground = ScrollingForeground()
+        self.midground = ScrollingMidground()
+        self.background = ScrollingBackground()
         self.landing_fx = ParticleEffects()
+        self.add_widget(self.background)
         self.add_widget(self.midground)
         self.add_widget(self.foreground)
         self.add_widget(self.player_character)
@@ -255,28 +257,161 @@ class ParticleEffects(Widget):
             self.landing_dust = ParticleSystem(name)
             self.landing_dust.emitter_x = self.parent.player_character.x
             self.landing_dust.emitter_y = self.parent.player_character.y - self.parent.player_character.size[1]*.35  
-            self.landing_dust.start(duration = .1)
-            Clock.schedule_once(self.landing_dust.stop, timeout = .1)
+            self.landing_dust.start(duration = .2)
+            Clock.schedule_once(self.landing_dust.stop, timeout = .2)
             
             print dir(PlayerCharacter)
         return
 
+class ScrollImage(object):
+    x, y = -500, -500
+    texture = None
+    size = (0, 0)
+    spacing = 0
+
 class ScrollingMidground(Widget):
+    current_midground_x = NumericProperty(0)
+
     def __init__(self, **kwargs):
         super(ScrollingMidground, self).__init__(**kwargs)
+        self.midelements = list()
+        self.midelements.append('media/art/midground_objects/testarch.png')
+        self.midelements.append('media/art/midground_objects/testground1.png')
+        self.midelements.append('media/art/midground_objects/testground2.png')
+        self.midelements.append('media/art/midground_objects/testhill.png')
+        self.midelements.append('media/art/midground_objects/testhill2.png')
+        self.midelements.append('media/art/midground_objects/testhouse.png')
+        self.midgrounds = list()
+        self.midground_dict = dict()
+        Clock.schedule_once(self._init_midground)
+        Clock.schedule_once(self._update_midground)
 
-        with self.canvas:
-            texture = CoreImage('media/art/midground_objects/testhouse.png').texture
-            texture.wrap = 'mirrored_repeat'
-            self.rect_1 = Rectangle(texture=texture, size=(Window.size[0],Window.size[1]*.25), pos=(0,Window.size[1]*.375))
+    def _init_midground(self,dt):
+        midgroundxspace = Window.width * 2
+        num_mid_objects = 0
+        while midgroundxspace > 0:
+            midground = self._create_midground()
+            self.midgrounds.append(midground)
+            midgroundxspace -= midground.size[0]
+            num_mid_objects += 1
 
-        Clock.schedule_interval(self.txupdate, 0)
+    def _create_midground(self):
+        # max_jump_distance = ((3*self.parent.player_character.jump_velocity)/self.parent.player_character.gravity)*self.speed
+        midground = ScrollImage()
+        rand_midground = random.randint(0, 5)
+        midground.spacing = random.randint(0, 800)
+        midground.y = random.randint(75,125)
+        midground.x = self.current_midground_x + midground.spacing
+        midground.texture = self.midelements[rand_midground]
+        texture = Image(source = self.midelements[rand_midground])
+        # mid_size_coefficient = random.uniform(.15,.25)
+        mid_size_coefficient = midground.y/125. * .25
+        midground.size = (texture.texture.size[0] * mid_size_coefficient, texture.texture.size[0] * mid_size_coefficient)
+        midground.speed = midground.size[0]*.9
+        self.current_midground_x += midground.size[0] + midground.spacing
+        return midground
 
-    def txupdate(self, dt):
-        t = Clock.get_boottime()
-        print t
-        self.rect_1.tex_coords = -(t * 0.1), 0, -(t * 0.1 + 1), 0, -(t * 0.1 + 1), -1, -(t * 0.1), -1
-        
+    def _render_midground(self):
+        for midground in self.midgrounds:
+            if midground not in self.midground_dict:
+                self.midground_dict[midground] = dict()
+                with self.canvas:
+                    PushMatrix()
+                    self.midground_dict[midground]['translate'] = Translate()
+                    self.midground_dict[midground]['Quad'] = Quad(source=midground.texture, points=(-midground.size[0] * 0.5, -midground.size[1] * 0.5, 
+                        midground.size[0] * 0.5,  -midground.size[1] * 0.5, midground.size[0] * 0.5,  midground.size[1] * 0.5, 
+                        -midground.size[0] * 0.5,  midground.size[1] * 0.5))    
+                    self.midground_dict[midground]['translate'].xy = (midground.x, midground.y)
+                    PopMatrix()
+            else:           
+                self.midground_dict[midground]['translate'].xy = (midground.x, midground.y)
+
+    def _update_midground(self, dt):
+        self._advance_time(dt)
+        self._render_midground()
+        Clock.schedule_once(self._update_midground)
+
+    def _advance_time(self, dt):
+        for midground in self.midgrounds:
+            midground.x -= midground.speed * dt
+            # print midground.speed
+            if midground.x < -midground.size[0]:
+                self.current_midground_x -= midground.size[0] + midground.spacing
+                self.midgrounds.pop(self.midgrounds.index(midground))
+                midground = self._create_midground()
+                self.midgrounds.append(midground)
+
+class ScrollingBackground(Widget):
+    speed = NumericProperty(50)
+    current_background_x = NumericProperty(0)
+
+    def __init__(self, **kwargs):
+        super(ScrollingBackground, self).__init__(**kwargs)
+        self.backelements = list()
+        self.backelements.append('media/art/midground_objects/testarch.png')
+        self.backelements.append('media/art/midground_objects/testground1.png')
+        self.backelements.append('media/art/midground_objects/testground2.png')
+        self.backelements.append('media/art/midground_objects/testhill.png')
+        self.backelements.append('media/art/midground_objects/testhill2.png')
+        self.backelements.append('media/art/midground_objects/testhouse.png')
+        self.backgrounds = list()
+        self.background_dict = dict()
+        Clock.schedule_once(self._init_background)
+        Clock.schedule_once(self._update_background)
+
+    def _init_background(self,dt):
+        backgroundxspace = Window.width * 2
+        num_back_objects = 0
+        while backgroundxspace > 0:
+            background = self._create_background()
+            self.backgrounds.append(background)
+            backgroundxspace -= background.size[0]
+            num_back_objects += 1
+
+    def _create_background(self):
+        # max_jump_distance = ((3*self.parent.player_character.jump_velocity)/self.parent.player_character.gravity)*self.speed
+        background = ScrollImage()
+        rand_background = random.randint(0, 5)
+        background.spacing = random.randint(0, 800)
+        background.y = random.randint(175,250)
+        background.x = self.current_background_x + background.spacing
+        background.texture = self.backelements[rand_background]
+        texture = Image(source = self.backelements[rand_background])
+        # back_size_coefficient = random.uniform(.05,.15)
+        back_size_coefficient = background.y/250. * .15
+        background.size = (texture.texture.size[0] * back_size_coefficient, texture.texture.size[0] * back_size_coefficient)
+        background.speed = background.size[0]*.9
+        self.current_background_x += background.size[0] + background.spacing
+        return background
+
+    def _render_background(self):
+        for background in self.backgrounds:
+            if background not in self.background_dict:
+                self.background_dict[background] = dict()
+                with self.canvas:
+                    PushMatrix()
+                    self.background_dict[background]['translate'] = Translate()
+                    self.background_dict[background]['Quad'] = Quad(source=background.texture, points=(-background.size[0] * 0.5, -background.size[1] * 0.5, 
+                        background.size[0] * 0.5,  -background.size[1] * 0.5, background.size[0] * 0.5,  background.size[1] * 0.5, 
+                        -background.size[0] * 0.5,  background.size[1] * 0.5))    
+                    self.background_dict[background]['translate'].xy = (background.x, background.y)
+                    PopMatrix()
+            else:           
+                self.background_dict[background]['translate'].xy = (background.x, background.y)
+
+    def _update_background(self, dt):
+        self._advance_time(dt)
+        self._render_background()
+        Clock.schedule_once(self._update_background)
+
+    def _advance_time(self, dt):
+        for background in self.backgrounds:
+            background.x -= self.speed * dt
+            if background.x < -background.size[0]:
+                self.current_background_x -= background.size[0] + background.spacing
+                self.backgrounds.pop(self.backgrounds.index(background))
+                background = self._create_background()
+                self.backgrounds.append(background)
 
 Factory.register('RunningGame', RunningGame)
 Factory.register('DebugPanel', DebugPanel)
