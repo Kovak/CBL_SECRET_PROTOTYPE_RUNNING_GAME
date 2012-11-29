@@ -276,8 +276,8 @@ class ScrollingMidground(Widget):
         super(ScrollingMidground, self).__init__(**kwargs)
         self.midelements = list()
         self.midelements.append('media/art/midground_objects/testarch.png')
-        self.midelements.append('media/art/midground_objects/testground1.png')
-        self.midelements.append('media/art/midground_objects/testground2.png')
+        # self.midelements.append('media/art/midground_objects/testground1.png')
+        # self.midelements.append('media/art/midground_objects/testground2.png')
         self.midelements.append('media/art/midground_objects/testhill.png')
         self.midelements.append('media/art/midground_objects/testhill2.png')
         self.midelements.append('media/art/midground_objects/testhouse.png')
@@ -298,16 +298,14 @@ class ScrollingMidground(Widget):
     def _create_midground(self):
         # max_jump_distance = ((3*self.parent.player_character.jump_velocity)/self.parent.player_character.gravity)*self.speed
         midground = ScrollImage()
-        rand_midground = random.randint(0, 5)
-        midground.spacing = random.randint(0, 800)
-        midground.y = random.randint(75,125)
-        midground.x = self.current_midground_x + midground.spacing
+        rand_midground = random.randint(0, 3)
         midground.texture = self.midelements[rand_midground]
         texture = Image(source = self.midelements[rand_midground])
-        # mid_size_coefficient = random.uniform(.15,.25)
-        mid_size_coefficient = midground.y/125. * .25
-        midground.size = (texture.texture.size[0] * mid_size_coefficient, texture.texture.size[0] * mid_size_coefficient)
-        midground.speed = midground.size[0]*.9
+        midground.spacing = random.randint(0, 500)
+        midground.size = texture.texture.size
+        midground.speed = midground.size[0]*.25
+        midground.y = 0 + midground.size[1]*.5
+        midground.x = self.current_midground_x + midground.spacing
         self.current_midground_x += midground.size[0] + midground.spacing
         return midground
 
@@ -348,12 +346,12 @@ class ScrollingBackground(Widget):
     def __init__(self, **kwargs):
         super(ScrollingBackground, self).__init__(**kwargs)
         self.backelements = list()
-        self.backelements.append('media/art/midground_objects/testarch.png')
+        # self.backelements.append('media/art/midground_objects/testarch.png')
         self.backelements.append('media/art/midground_objects/testground1.png')
         self.backelements.append('media/art/midground_objects/testground2.png')
-        self.backelements.append('media/art/midground_objects/testhill.png')
-        self.backelements.append('media/art/midground_objects/testhill2.png')
-        self.backelements.append('media/art/midground_objects/testhouse.png')
+        # self.backelements.append('media/art/midground_objects/testhill.png')
+        # self.backelements.append('media/art/midground_objects/testhill2.png')
+        # self.backelements.append('media/art/midground_objects/testhouse.png')
         self.backgrounds = list()
         self.background_dict = dict()
         Clock.schedule_once(self._init_background)
@@ -371,16 +369,14 @@ class ScrollingBackground(Widget):
     def _create_background(self):
         # max_jump_distance = ((3*self.parent.player_character.jump_velocity)/self.parent.player_character.gravity)*self.speed
         background = ScrollImage()
-        rand_background = random.randint(0, 5)
-        background.spacing = random.randint(0, 800)
-        background.y = random.randint(175,250)
-        background.x = self.current_background_x + background.spacing
+        rand_background = random.randint(0, 1)
         background.texture = self.backelements[rand_background]
         texture = Image(source = self.backelements[rand_background])
-        # back_size_coefficient = random.uniform(.05,.15)
-        back_size_coefficient = background.y/250. * .15
-        background.size = (texture.texture.size[0] * back_size_coefficient, texture.texture.size[0] * back_size_coefficient)
-        background.speed = background.size[0]*.9
+        background.spacing = 0
+        background.size = texture.texture.size
+        background.speed = background.size[0]*.1
+        background.y = 0 + background.size[1]*.5
+        background.x = self.current_background_x + background.spacing
         self.current_background_x += background.size[0] + background.spacing
         return background
 
