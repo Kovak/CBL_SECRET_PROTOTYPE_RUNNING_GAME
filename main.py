@@ -31,9 +31,9 @@ class RunningGame(Widget):
     def __init__(self, **kwargs):
         super(RunningGame, self).__init__(**kwargs)
         self.player_character = PlayerCharacter(parent = self)
-        self.add_widget(self.player_character)
         self.foreground = ScrollingForeground()
         self.add_widget(self.foreground)
+        self.add_widget(self.player_character)
         self.landing_fx = ParticleEffects()
         self.add_widget(self.landing_fx)
 
@@ -96,14 +96,14 @@ class PlayerCharacter(Widget):
             self.anim_frame_counter += 1
         if self.anim_frame_counter > 3:
             self.anim_frame_counter = 0
-        Clock.schedule_once(self.update_anim_frame_counter, .25)
+        Clock.schedule_once(self.update_anim_frame_counter, .20)
                     
     def _advance_time(self, dt):
         landed = False
         gravity = self.gravity
         self._check_collision()
         if self.isOnGround and not self.isMidJump:
-            self.y_velocity = 0
+            self.y_velocity -= self.y_velocity
             self.numJumps = 2
 
         if self.isJumping:
@@ -129,10 +129,16 @@ class PlayerCharacter(Widget):
         #Animation Code:
 
         if self.y_velocity > 0:
-            self.texture = 'media/art/characters/char1-jump1.png'
+            if self.anim_frame_counter == 0 or self.anim_frame_counter == 2:
+                self.texture = 'media/art/characters/char1-jump1.png'
+            if self.anim_frame_counter == 1 or self.anim_frame_counter == 3:
+                self.texture = 'media/art/characters/char1-jump1-2.png'
 
         if self.y_velocity < 0:
-            self.texture = 'media/art/characters/char1-jump2.png'
+            if self.anim_frame_counter == 0 or self.anim_frame_counter == 2:
+                self.texture = 'media/art/characters/char1-jump2.png'
+            if self.anim_frame_counter == 1 or self.anim_frame_counter == 3:
+                self.texture = 'media/art/characters/char1-jump2-2.png'
 
         if self.y_velocity == 0:
             if self.anim_frame_counter == 0:
