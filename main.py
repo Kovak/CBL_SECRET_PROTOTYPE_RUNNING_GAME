@@ -49,12 +49,32 @@ class RunningGame(Widget):
         if self.swipe_up == True:
             self.player_character.isJumping = True
             self.swipe_up = False
+        if self.swipe_right == True:
+            self.landing_fx.fire_forward(.1)
+            self.swipe_right = False
 
     def on_touch_move(self, touch):
-        if touch.y > touch.oy and abs(touch.y - touch.oy) > abs(touch.x - touch.ox):
+        if touch.y > touch.oy and abs(touch.y - touch.oy) > 20 and abs(touch.y - touch.oy) > abs(touch.x - touch.ox):
+            # print 'swipe up'
             self.swipe_up = True
         else:
             self.swipe_up = False
+        if touch.y < touch.oy and abs(touch.y - touch.oy) > 20 and abs(touch.y - touch.oy) > abs(touch.x - touch.ox):
+            # print 'swipe down'
+            self.swipe_down = True
+        else:
+            self.swipe_down = False
+        if touch.x > touch.ox and abs(touch.x - touch.ox) > 20 and abs(touch.x - touch.ox) > abs(touch.y - touch.oy):
+            # print 'swipe right'
+            self.swipe_right = True
+        else:
+            self.swipe_right = False
+        if touch.x < touch.ox and abs(touch.x - touch.ox) > 20 and abs(touch.x - touch.ox) > abs(touch.y - touch.oy):
+            # print 'swipe left'
+            self.swipe_left = True
+        else:
+            self.swipe_left = False
+
 
 class PlayerCharacter(Widget):
     texture = StringProperty(None)
@@ -251,17 +271,23 @@ class ScrollingForeground(Widget):
 
 class ParticleEffects(Widget):
     landing_dust = ObjectProperty(ParticleSystem)
+    shoot_fire = ObjectProperty(ParticleSystem)
 
     def emit_dust(self, dt, name = 'ParticleEffects/templates/jellyfish.pex'):
         with self.canvas:
             self.landing_dust = ParticleSystem(name)
             self.landing_dust.emitter_x = self.parent.player_character.x
             self.landing_dust.emitter_y = self.parent.player_character.y - self.parent.player_character.size[1]*.35  
-            self.landing_dust.start(duration = .2)
-            Clock.schedule_once(self.landing_dust.stop, timeout = .2)
-            
-            print dir(PlayerCharacter)
-        return
+            self.landing_dust.start(duration = .1)
+            Clock.schedule_once(self.landing_dust.stop, timeout = .1)
+
+    def fire_forward(self, dt, name = 'ParticleEffects/templates/fire.pex'):
+        with self.canvas:
+            self.shoot_fire = ParticleSystem(name)
+            self.shoot_fire.emitter_x = self.parent.player_character.x + self.parent.player_character.size[0]*.5
+            self.shoot_fire.emitter_y = self.parent.player_character.y  
+            self.shoot_fire.start(duration = .1)
+            Clock.schedule_once(self.shoot_fire.stop, timeout = .1)
 
 class ScrollImage(object):
     x, y = -500, -500
