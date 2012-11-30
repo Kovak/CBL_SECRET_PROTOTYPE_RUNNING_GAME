@@ -281,13 +281,13 @@ class ParticleEffects(Widget):
             self.landing_dust.start(duration = .1)
             Clock.schedule_once(self.landing_dust.stop, timeout = .1)
 
-    def fire_forward(self, dt, name = 'ParticleEffects/templates/fire.pex'):
+    def fire_forward(self, dt, name = 'ParticleEffects/templates/shoot_spell.pex'):
         with self.canvas:
             self.shoot_fire = ParticleSystem(name)
             self.shoot_fire.emitter_x = self.parent.player_character.x + self.parent.player_character.size[0]*.5
             self.shoot_fire.emitter_y = self.parent.player_character.y  
-            self.shoot_fire.start(duration = .1)
-            Clock.schedule_once(self.shoot_fire.stop, timeout = .1)
+            self.shoot_fire.start(duration = 1)
+            Clock.schedule_once(self.shoot_fire.stop, timeout = 1)
 
 class ScrollImage(object):
     x, y = -500, -500
