@@ -27,7 +27,6 @@ class DebugPanel(Widget):
 
 class RunningGame(Widget):
     foreground = ObjectProperty(None)
-    swipe_up = BooleanProperty(False)
 
     def __init__(self, **kwargs):
         super(RunningGame, self).__init__(**kwargs)
@@ -42,38 +41,29 @@ class RunningGame(Widget):
         self.add_widget(self.player_character)
         self.add_widget(self.landing_fx)
 
-    def on_touch_down(self, touch):
-        pass
+    # def on_touch_down(self, touch):
+    #     pass
 
     def on_touch_up(self, touch):
-        if self.swipe_up == True:
-            self.player_character.isJumping = True
-            self.swipe_up = False
-        if self.swipe_right == True:
-            self.landing_fx.fire_forward(.1)
-            self.swipe_right = False
+        if 'swipe' not in touch.ud:
+            # touch is not a swipe, we can deal with this later
+            return 
+        else:
+            if touch.ud['swipe'] == 'up':
+                self.player_character.isJumping = True
+            elif touch.ud['swipe'] == 'right':
+                self.landing_fx.fire_forward(.1)
 
     def on_touch_move(self, touch):
         if touch.y > touch.oy and abs(touch.y - touch.oy) > 20 and abs(touch.y - touch.oy) > abs(touch.x - touch.ox):
-            # print 'swipe up'
-            self.swipe_up = True
-        else:
-            self.swipe_up = False
-        if touch.y < touch.oy and abs(touch.y - touch.oy) > 20 and abs(touch.y - touch.oy) > abs(touch.x - touch.ox):
-            # print 'swipe down'
-            self.swipe_down = True
-        else:
-            self.swipe_down = False
-        if touch.x > touch.ox and abs(touch.x - touch.ox) > 20 and abs(touch.x - touch.ox) > abs(touch.y - touch.oy):
-            # print 'swipe right'
-            self.swipe_right = True
-        else:
-            self.swipe_right = False
-        if touch.x < touch.ox and abs(touch.x - touch.ox) > 20 and abs(touch.x - touch.ox) > abs(touch.y - touch.oy):
+            touch.ud['swipe'] = 'up'
+        elif touch.y < touch.oy and abs(touch.y - touch.oy) > 20 and abs(touch.y - touch.oy) > abs(touch.x - touch.ox):
+            touch.ud['swipe'] = 'down'
+        elif touch.x > touch.ox and abs(touch.x - touch.ox) > 20 and abs(touch.x - touch.ox) > abs(touch.y - touch.oy):
+            touch.ud['swipe'] = 'right'
+        elif touch.x < touch.ox and abs(touch.x - touch.ox) > 20 and abs(touch.x - touch.ox) > abs(touch.y - touch.oy):
             # print 'swipe left'
-            self.swipe_left = True
-        else:
-            self.swipe_left = False
+            touch.ud['swipe'] = 'left'
 
 
 class PlayerCharacter(Widget):
