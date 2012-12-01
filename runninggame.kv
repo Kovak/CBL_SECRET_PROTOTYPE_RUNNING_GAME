@@ -22,7 +22,6 @@ RunningGame:
             size_hint: (.3, .1)
             pos: (root.pos[0]+root.size[0]*.34, root.pos[1]+root.height*.89)
 
-
 <DebugPanel>:
     fps: root.fps
     Label:
@@ -33,7 +32,7 @@ RunningGame:
         valign: 'middle'
         color: (1,1,1,1)
         text: 'FPS: ' + root.fps if root.fps != None else 'FPS:'
-        on_touch_down: root.update_fps(None)
+        bind: root.update_fps(None)
 			
 
 
