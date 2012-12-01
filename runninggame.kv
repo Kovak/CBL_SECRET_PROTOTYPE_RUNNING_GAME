@@ -1,6 +1,6 @@
 #:kivy 1.4.1
 
-RunningGame:
+MenuScreen:
 
 <RunningGame>:
 	canvas:
@@ -21,6 +21,61 @@ RunningGame:
 		DebugPanel:
             size_hint: (.3, .1)
             pos: (root.pos[0]+root.size[0]*.34, root.pos[1]+root.height*.89)
+
+<MenuScreen>:
+    canvas:
+        Color: 
+            rgb: (.16796875, 0.8125, 1.)
+        Rectangle:
+            size: (root.size[0], root.size[1]*75)
+            pos: root.pos
+        Color:
+            rgb: (1., 1., 1.)
+        Rectangle:
+            source: 'media/art/backgrounds/skybackground1.png'
+            pos: root.pos
+            size: self.size
+
+    ScrollingBackground:
+        pos: root.pos
+        size: root.size
+    ScrollingMidground:
+        pos: root.pos
+        size: root.size
+    Widget:
+        pos: root.pos
+        size: root.size
+        canvas:
+            Color:
+                rgba: (1, 1, 1, .6)
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        Image:
+            id: center_menu
+            source: 'media/art/icons/menu_background.png'
+            pos: root.pos
+            size: root.size
+        BoxLayout:
+            size: center_menu.texture_size
+            pos: (root.x + (root.width - center_menu.texture_size[0])/2., root.y + (root.height - center_menu.texture_size[1])/2.)
+            orientation: 'vertical'
+            Image:
+                size_hint: (1, .5)
+                source: 'media/art/icons/new_game_button.png'
+            Image:
+                size_hint: (1, .5)
+                source: 'media/art/icons/quit_button.png'
+
+
+
+#<MenuInterface>:
+#    canvas:
+#        Color:
+#            rgba: (1, 1, 1, .5)
+#        Rectangle:
+#            pos: root.pos
+#            size: root.size
 
 <DebugPanel>:
     fps: root.fps

@@ -429,8 +429,17 @@ class ScrollingBackground(Widget):
                 background = self._create_background()
                 self.backgrounds.append(background)
 
+class MenuScreen(Widget):
+    foreground = ObjectProperty(None)
+
+    def __init__(self, **kwargs):
+        super(MenuScreen, self).__init__(**kwargs)
+
+
 Factory.register('RunningGame', RunningGame)
 Factory.register('DebugPanel', DebugPanel)
+Factory.register('ScrollingMidground', ScrollingMidground)
+Factory.register('ScrollingBackground', ScrollingBackground)
 
 
 class RunningGameApp(App):
