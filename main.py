@@ -46,8 +46,8 @@ class RunningGame(Widget):
 
     def on_touch_up(self, touch):
         if 'swipe' not in touch.ud:
-            # touch is not a swipe, we can deal with this later
-            return 
+            # touch is not a swipe, for now lets make this mean junp
+            self.player_character.isJumping = True 
         else:
             if touch.ud['swipe'] == 'up':
                 self.player_character.isJumping = True
@@ -113,7 +113,12 @@ class PlayerCharacter(Widget):
         if self.anim_frame_counter > 3:
             self.anim_frame_counter = 0
         Clock.schedule_once(self.update_anim_frame_counter, .20)
-                    
+        
+
+    def die(self):
+        self.y = Window.height *.5
+        self.y_velocity = 0            
+
     def _advance_time(self, dt):
         landed = False
         gravity = self.gravity
@@ -139,8 +144,7 @@ class PlayerCharacter(Widget):
         self.y += self.y_velocity * dt
 
         if self.y < 0 - self.size[0]:
-            self.y = Window.height *.5
-            self.y_velocity = 0
+            self.die()
 
         #Animation Code:
 
@@ -165,7 +169,7 @@ class PlayerCharacter(Widget):
                 self.texture = 'media/art/characters/char1-idle2.png'
             if self.anim_frame_counter == 3:
                 self.texture = 'media/art/characters/char1-step2.png'       
-        
+    
     def _render(self):
             if not self.isRendered:
                 with self.canvas:
@@ -268,8 +272,8 @@ class ParticleEffects(Widget):
             self.landing_dust = ParticleSystem(name)
             self.landing_dust.emitter_x = self.parent.player_character.x
             self.landing_dust.emitter_y = self.parent.player_character.y - self.parent.player_character.size[1]*.35  
-            self.landing_dust.start(duration = .1)
-            Clock.schedule_once(self.landing_dust.stop, timeout = .1)
+            self.landing_dust.start(duration = .3)
+            Clock.schedule_once(self.landing_dust.stop, timeout = .3)
 
     def fire_forward(self, dt, name = 'ParticleEffects/templates/shoot_spell.pex'):
         with self.canvas:
