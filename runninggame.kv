@@ -1,6 +1,6 @@
 #:kivy 1.4.1
 
-MenuScreen:
+RunningGame:
 
 <RunningGame>:
 	canvas:
@@ -15,7 +15,6 @@ MenuScreen:
 			source: 'media/art/backgrounds/skybackground1.png'
 			pos: root.pos
 			size: self.size
-			
 		
 	FloatLayout:
 		DebugPanel:
@@ -67,7 +66,23 @@ MenuScreen:
                 size_hint: (1, .5)
                 source: 'media/art/icons/quit_button.png'
 
+<ScoreDisplay>:
+	Label:
+		pos: root.pos
+		size: root.size
+		font_size: root.size[1]*.28
+		halign: 'center'
+		valign: 'middle'
+		text: 'Score: ' + str(root.score)
 
+<LivesDisplay>:
+	Label:
+		pos: root.pos
+		size: root.size
+		font_size: root.size[1]*.28
+		halign: 'center'
+		valign: 'middle'
+		text: 'Lives: ' + str(root.lives)
 
 #<MenuInterface>:
 #    canvas:

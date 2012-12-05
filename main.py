@@ -31,6 +31,9 @@ class RunningGame(Widget):
     def __init__(self, **kwargs):
         super(RunningGame, self).__init__(**kwargs)
         self.player_character = PlayerCharacter(parent = self)
+        self.confined_enemy = ConfinedEnemy()
+        self.life_count = LivesDisplay()
+        self.score = ScoreDisplay()
         self.foreground = ScrollingForeground()
         self.midground = ScrollingMidground()
         self.background = ScrollingBackground()
@@ -38,6 +41,8 @@ class RunningGame(Widget):
         self.add_widget(self.background)
         self.add_widget(self.midground)
         self.add_widget(self.foreground)
+        self.add_widget(self.score)
+        self.add_widget(self.life_count)
         self.add_widget(self.player_character)
         self.add_widget(self.landing_fx)
 
@@ -53,6 +58,8 @@ class RunningGame(Widget):
                 self.player_character.isJumping = True
             elif touch.ud['swipe'] == 'right':
                 self.landing_fx.fire_forward(.1)
+            elif touch.ud['swipe'] == 'down':
+                self.player_character.down_dash = True
 
     def on_touch_move(self, touch):
         if touch.y > touch.oy and abs(touch.y - touch.oy) > 20 and abs(touch.y - touch.oy) > abs(touch.x - touch.ox):
@@ -64,6 +71,9 @@ class RunningGame(Widget):
         elif touch.x < touch.ox and abs(touch.x - touch.ox) > 20 and abs(touch.x - touch.ox) > abs(touch.y - touch.oy):
             # print 'swipe left'
             touch.ud['swipe'] = 'left'
+
+    def add_confined_enemy(enemy):
+        self.add_widget(enemy)
 
 
 class PlayerCharacter(Widget):
@@ -77,12 +87,15 @@ class PlayerCharacter(Widget):
     anim_frame_counter = NumericProperty(0)
     gravity = NumericProperty(300)
     jump_velocity = NumericProperty(250)
+    down_dash = BooleanProperty(False)
+    down_dash_active = BooleanProperty(False)
+    down_dash_counter = NumericProperty(0)
 
     def __init__(self, parent, **kwargs):
         super(PlayerCharacter, self).__init__(**kwargs)
         self.texture = 'media/art/characters/char1-idle1.png'
         self.x = Window.width *.2
-        self.y = Window.height *.5
+        self.y = Window.height *.4
         self.size = (82, 150)
         self.render_dict = dict()
         Clock.schedule_once(self._update)
@@ -116,8 +129,14 @@ class PlayerCharacter(Widget):
         
 
     def die(self):
-        self.y = Window.height *.5
-        self.y_velocity = 0            
+        self.y = Window.height *.4
+        self.y_velocity = 0
+
+        if self.parent.life_count.lives > 0:
+            self.parent.life_count.decrease_lives()
+
+        if self.parent.life_count.lives == 0:
+            print 'game over'   
 
     def _advance_time(self, dt):
         landed = False
@@ -155,19 +174,32 @@ class PlayerCharacter(Widget):
                 self.texture = 'media/art/characters/char1-jump1-2.png'
 
         if self.y_velocity < 0:
-            if self.anim_frame_counter == 0 or self.anim_frame_counter == 2:
-                self.texture = 'media/art/characters/char1-jump2.png'
-            if self.anim_frame_counter == 1 or self.anim_frame_counter == 3:
-                self.texture = 'media/art/characters/char1-jump2-2.png'
+            if self.down_dash == False:
+                if self.anim_frame_counter == 0 or self.anim_frame_counter == 2:
+                    self.texture = 'media/art/characters/char1-jump2.png'
+                if self.anim_frame_counter == 1 or self.anim_frame_counter == 3:
+                    self.texture = 'media/art/characters/char1-jump2-2.png'
+            if self.down_dash == True:
+                self.texture = 'media/art/characters/char1-downdash_fall.png'
+                self.down_dash_active = True
+
         if self.y_velocity == 0:
-            if self.anim_frame_counter == 0:
-                self.texture = 'media/art/characters/char1-idle1.png'
-            if self.anim_frame_counter == 1:
-                self.texture = 'media/art/characters/char1-step1.png'
-            if self.anim_frame_counter == 2:
-                self.texture = 'media/art/characters/char1-idle2.png'
-            if self.anim_frame_counter == 3:
-                self.texture = 'media/art/characters/char1-step2.png'       
+            self.down_dash = False
+            if self.down_dash_active == True:
+                self.texture = 'media/art/characters/char1-downdash_land1.png'
+                self.down_dash_counter += 1
+                if self.down_dash_counter > 15:
+                    self.down_dash_active = False
+                    self.down_dash_counter =0
+            if self.down_dash_active == False:
+                if self.anim_frame_counter == 0:
+                    self.texture = 'media/art/characters/char1-idle1.png'
+                if self.anim_frame_counter == 1:
+                    self.texture = 'media/art/characters/char1-step1.png'
+                if self.anim_frame_counter == 2:
+                    self.texture = 'media/art/characters/char1-idle2.png'
+                if self.anim_frame_counter == 3:
+                    self.texture = 'media/art/characters/char1-step2.png'       
     
     def _render(self):
             if not self.isRendered:
@@ -184,6 +216,142 @@ class PlayerCharacter(Widget):
             else:
                 self.render_dict['translate'].xy = (self.x, self.y)
                 self.render_dict['rect'].source = self.texture
+
+class ScoreDisplay(Widget):
+    score = NumericProperty(0)
+    size_hint = (.3,.1)
+    pos = (Window.width * .8, Window.height * .85)
+
+    def __init__(self, **kwargs):
+        super(ScoreDisplay, self).__init__(**kwargs)
+        Clock.schedule_once(self.update_score)
+
+    def update_score(self, dt):
+        Clock.schedule_interval(self.increase_score, 1)
+
+    def increase_score(self, dt):
+        self.score += 1
+
+class LivesDisplay(Widget):
+    lives = NumericProperty(3)
+    size_hint = (.3,.1)
+    pos = (Window.width * .05, Window.height * .85)
+
+    def increase_lives(self):
+        self.lives += 1
+
+    def decrease_lives(self):
+        self.lives -= 1
+
+class Enemy(object):
+    x, y = -500, -500
+    texture = None
+    size = (0, 0)
+    spacing = 0
+
+class ConfinedEnemy(Widget):
+    speed = NumericProperty(200)
+    texture = StringProperty(None)
+    anim_frame_counter = NumericProperty(0)
+    isRendered = BooleanProperty(False)
+    current_enemy_x = NumericProperty(0)
+
+    def __init__(self, **kwargs):
+        super(ConfinedEnemy, self).__init__(**kwargs)
+        self.enemies = list()
+        self.enemies_dict = dict()
+        Clock.schedule_once(self._init_enemies)
+        Clock.schedule_once(self._update, timeout=2)
+
+    def _init_enemies(self, dt):
+        enemy = self._create_enemy()
+        self.enemies.append(enemy)      
+
+        # platformxspace = Window.width * 2
+        # numplats = 0
+        # while platformxspace > 0:
+        #     platform = self._create_platform()
+        #     self.platforms.append(platform)
+        #     platformxspace -= platform.size[0]
+        #     numplats += 1         
+
+    def _create_enemy(self):
+        enemy = Enemy()
+        enemy.y = 100
+        enemy.x = 100
+        print 'created enemy at: ', enemy.x
+        enemy.texture = 'media/art/characters/testcharacter.png'
+        texture = Image(source = 'media/art/characters/testcharacter.png')
+        enemy.size = texture.texture_size
+        # self.parent.add_confined_enemy(enemy)
+
+            # max_jump_distance = ((3*self.parent.player_character.jump_velocity)/self.parent.player_character.gravity)*self.speed
+            # platform = Platform()
+            # randPlatform = random.randint(0, 2)
+            # platform.spacing = random.randint(0, max_jump_distance)
+            # platform.y = 0
+            # platform.x = self.current_platform_x + platform.spacing
+            # print 'created platform at: ', platform.x
+            # platform.texture = self.listofelements[randPlatform]
+            # texture = Image(source = self.listofelements[randPlatform])
+            # platform.size = texture.texture_size
+            # self.current_platform_x += platform.size[0] + platform.spacing
+            # return platform
+
+    def _update(self, dt):
+        self._render()
+        self._advance_time(dt)
+        Clock.schedule_once(self._update)
+
+    def _advance_time(self, dt):
+        for enemy in self.enemies:
+            enemy.x -= self.speed * dt
+            if enemy.x < -enemy.size[0]:
+                self.current_enemy_x -= enemy.size[0] + enemy.spacing
+                self.enemies.pop(self.enemies.index(enemy))
+                enemy = self._create_enemy()
+                self.enemies.append(enemy)
+
+        # for platform in self.platforms:
+        #     platform.x -= self.speed * dt
+        #     if platform.x < -platform.size[0]:
+        #         self.current_platform_x -= platform.size[0] + platform.spacing
+        #         self.platforms.pop(self.platforms.index(platform))
+        #         platform = self._create_platform()
+        #         self.platforms.append(platform)
+
+    def _render(self):
+        for enemy in self.enemies:
+            if enemy not in self.enemies_dict:
+                self.enemies_dict[enemy] = dict()
+                with self.canvas:
+                    PushMatrix()
+                    self.enemies_dict[enemy]['translate'] = Translate()
+                    self.enemies_dict[enemy]['Quad'] = Quad(source=enemy.texture, points=(-enemy.size[0] * 0.5, -enemy.size[1] * 0.5, 
+                        enemy.size[0] * 0.5,  -enemy.size[1] * 0.5, enemy.size[0] * 0.5,  enemy.size[1] * 0.5, 
+                        -enemy.size[0] * 0.5,  enemy.size[1] * 0.5))    
+                    self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
+                    PopMatrix()
+
+            else:           
+                self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
+
+
+        # for platform in self.platforms:
+        #     if platform not in self.platforms_dict:
+        #         self.platforms_dict[platform] = dict()
+        #         with self.canvas:
+        #             PushMatrix()
+        #             self.platforms_dict[platform]['translate'] = Translate()
+        #             self.platforms_dict[platform]['Quad'] = Quad(source=platform.texture, points=(-platform.size[0] * 0.5, -platform.size[1] * 0.5, 
+        #                 platform.size[0] * 0.5,  -platform.size[1] * 0.5, platform.size[0] * 0.5,  platform.size[1] * 0.5, 
+        #                 -platform.size[0] * 0.5,  platform.size[1] * 0.5))    
+        #             self.platforms_dict[platform]['translate'].xy = (platform.x, platform.y)
+        #             PopMatrix()
+
+        #     else:           
+        #         self.platforms_dict[platform]['translate'].xy = (platform.x, platform.y)
+
 
 class Platform(object):
     x, y = -500, -500
@@ -204,8 +372,21 @@ class ScrollingForeground(Widget):
         self.platforms = list()
         self.platforms_dict = dict()
         Clock.schedule_once(self._init_platforms)
+        # Clock.schedule_once(self.startup_platform)
         Clock.schedule_once(self._update)
         #Clock.schedule_interval(self._increase_platform_speed, 1.0)
+
+    # def startup_platform(self, dt):
+    #     platform = Platform()
+    #     platform.y = 0
+    #     platform.x = 0
+    #     platform.texture = self.listofelements[2]
+    #     texture = Image(source = self.listofelements[2])
+    #     platform.size = texture.texture.size
+    #     self.platforms.append(platform)
+    #     self._render()
+    #     Clock.schedule_once(self._init_platforms, timeout=2)
+    #     Clock.schedule_once(self._update, timeout=1)
 
     def _increase_platform_speed(self, dt):
         self.speed += 10
@@ -440,6 +621,9 @@ Factory.register('RunningGame', RunningGame)
 Factory.register('DebugPanel', DebugPanel)
 Factory.register('ScrollingMidground', ScrollingMidground)
 Factory.register('ScrollingBackground', ScrollingBackground)
+Factory.register('MenuScreen', MenuScreen)
+Factory.register('ScoreDisplay', ScoreDisplay)
+Factory.register('LivesDisplay', LivesDisplay)
 
 
 class RunningGameApp(App):
