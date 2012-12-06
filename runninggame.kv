@@ -1,7 +1,5 @@
 #:kivy 1.4.1
 
-RunningGame:
-
 <RunningGame>:
 	canvas:
 		Color: 
@@ -59,12 +57,19 @@ RunningGame:
             size: center_menu.texture_size
             pos: (root.x + (root.width - center_menu.texture_size[0])/2., root.y + (root.height - center_menu.texture_size[1])/2.)
             orientation: 'vertical'
-            Image:
+            padding: 40
+            spacing: 40
+            Button:
                 size_hint: (1, .5)
-                source: 'media/art/icons/new_game_button.png'
-            Image:
+                background_normal: 'media/art/icons/new_game_button_normal.png'
+                background_down: 'media/art/icons/new_game_button_down.png'
+                on_release: root.button_callback('new')
+            Button:
+                name: 'quit'
                 size_hint: (1, .5)
-                source: 'media/art/icons/quit_button.png'
+                background_normal: 'media/art/icons/quit_button_normal.png'
+                background_down: 'media/art/icons/quit_button_down.png'
+                on_release: root.button_callback('quit')
 
 <ScoreDisplay>:
 	Label:

@@ -1,5 +1,6 @@
 import kivy
 from kivy.app import App
+from kivy.base import EventLoop
 from kivy.factory import Factory
 from kivy.uix.widget import Widget
 from kivy.graphics.texture import Texture
@@ -14,6 +15,7 @@ from kivy.properties import NumericProperty, StringProperty, ObjectProperty, Boo
 from kivy.lang import Builder
 from kivyparticle.engine import *
 from kivy.input.motionevent import MotionEvent
+from kivy.uix.screenmanager import ScreenManager, Screen, FadeTransition
 
 def random_variance(base, variance):
     return base + variance * (random.random() * 2.0 - 1.0)
@@ -25,24 +27,27 @@ class DebugPanel(Widget):
         self.fps = str(int(Clock.get_fps()))
         Clock.schedule_once(self.update_fps)
 
-class RunningGame(Widget):
+class RunningGame(Screen):
     foreground = ObjectProperty(None)
 
     def __init__(self, **kwargs):
         super(RunningGame, self).__init__(**kwargs)
-        self.player_character = PlayerCharacter(parent = self)
-        self.confined_enemy = ConfinedEnemy()
-        self.life_count = LivesDisplay()
-        self.score = ScoreDisplay()
-        self.foreground = ScrollingForeground()
+        
+    def start(self):
+        self.player_character = PlayerCharacter(game = self)
+        self.foreground = ScrollingForeground(game = self)
         self.midground = ScrollingMidground()
         self.background = ScrollingBackground()
-        self.landing_fx = ParticleEffects()
+        self.landing_fx = ParticleEffects(game = self)
+        self.life_count = LivesDisplay()
+        self.score = ScoreDisplay()
+        self.confined_enemy = ConfinedEnemy()
         self.add_widget(self.background)
         self.add_widget(self.midground)
         self.add_widget(self.foreground)
         self.add_widget(self.score)
         self.add_widget(self.life_count)
+        # self.add_widget(self.confined_enemy)
         self.add_widget(self.player_character)
         self.add_widget(self.landing_fx)
 
@@ -52,7 +57,7 @@ class RunningGame(Widget):
     def on_touch_up(self, touch):
         if 'swipe' not in touch.ud:
             # touch is not a swipe, for now lets make this mean junp
-            self.player_character.isJumping = True 
+            self.player_character.isJumping = True
         else:
             if touch.ud['swipe'] == 'up':
                 self.player_character.isJumping = True
@@ -69,7 +74,6 @@ class RunningGame(Widget):
         elif touch.x > touch.ox and abs(touch.x - touch.ox) > 20 and abs(touch.x - touch.ox) > abs(touch.y - touch.oy):
             touch.ud['swipe'] = 'right'
         elif touch.x < touch.ox and abs(touch.x - touch.ox) > 20 and abs(touch.x - touch.ox) > abs(touch.y - touch.oy):
-            # print 'swipe left'
             touch.ud['swipe'] = 'left'
 
     def add_confined_enemy(enemy):
@@ -90,13 +94,18 @@ class PlayerCharacter(Widget):
     down_dash = BooleanProperty(False)
     down_dash_active = BooleanProperty(False)
     down_dash_counter = NumericProperty(0)
+    dash_landed = BooleanProperty(False)
+    dash_land_counter = NumericProperty(0)
+
+    game = ObjectProperty(None)
 
     def __init__(self, parent, **kwargs):
         super(PlayerCharacter, self).__init__(**kwargs)
         self.texture = 'media/art/characters/char1-idle1.png'
         self.x = Window.width *.2
-        self.y = Window.height *.4
+        self.y = Window.height *.5
         self.size = (82, 150)
+        self.size_hint = (None, None)
         self.render_dict = dict()
         Clock.schedule_once(self._update)
         Clock.schedule_once(self.update_anim_frame_counter, .25)
@@ -108,11 +117,12 @@ class PlayerCharacter(Widget):
         Clock.schedule_once(self._update)
 
     def _check_collision(self):
-        for each in self.parent.foreground.platforms:
+        print "checking collision: ", len(self.game.foreground.platforms)
+        for each in self.game.foreground.platforms:
             if self.x >= each.x - each.size[0] * .5 and self.x <= each.x + each.size[0] * .5:
                 if each.y + each.size[1]*.5 >= self.y - self.size[1] *.5 and each.y + each.size[1]*.5 - 10 < self.y - self.size[1] *.5:
                     self.isOnGround = True
-                    self.y = each.y + each.size[1]*.5 + self.size[1] *.5    
+                    self.y = each.y + each.size[1]*.5 + self.size[1] *.5
                     return
 
         self.isOnGround = False
@@ -129,7 +139,7 @@ class PlayerCharacter(Widget):
         
 
     def die(self):
-        self.y = Window.height *.4
+        self.y = Window.height *.5
         self.y_velocity = 0
 
         if self.parent.life_count.lives > 0:
@@ -216,6 +226,9 @@ class PlayerCharacter(Widget):
             else:
                 self.render_dict['translate'].xy = (self.x, self.y)
                 self.render_dict['rect'].source = self.texture
+                self.render_dict['rect'].points = points=(-self.size[0] * 0.5, -self.size[1] * 0.5,
+                        self.size[0] * 0.5, -self.size[1] * 0.5, self.size[0] * 0.5, self.size[1] * 0.5,
+                         -self.size[0] * 0.5, self.size[1] * 0.5)
 
 class ScoreDisplay(Widget):
     score = NumericProperty(0)
@@ -401,7 +414,7 @@ class ScrollingForeground(Widget):
             numplats += 1         
 
     def _create_platform(self):
-            max_jump_distance = ((3*self.parent.player_character.jump_velocity)/self.parent.player_character.gravity)*self.speed
+            max_jump_distance = ((3*self.game.player_character.jump_velocity)/self.game.player_character.gravity)*self.speed
             platform = Platform()
             randPlatform = random.randint(0, 2)
             platform.spacing = random.randint(0, max_jump_distance)
@@ -435,32 +448,33 @@ class ScrollingForeground(Widget):
                 with self.canvas:
                     PushMatrix()
                     self.platforms_dict[platform]['translate'] = Translate()
-                    self.platforms_dict[platform]['Quad'] = Quad(source=platform.texture, points=(-platform.size[0] * 0.5, -platform.size[1] * 0.5, 
-                        platform.size[0] * 0.5,  -platform.size[1] * 0.5, platform.size[0] * 0.5,  platform.size[1] * 0.5, 
-                        -platform.size[0] * 0.5,  platform.size[1] * 0.5))    
+                    self.platforms_dict[platform]['Quad'] = Quad(source=platform.texture, points=(-platform.size[0] * 0.5, -platform.size[1] * 0.5,
+                        platform.size[0] * 0.5, -platform.size[1] * 0.5, platform.size[0] * 0.5, platform.size[1] * 0.5,
+                        -platform.size[0] * 0.5, platform.size[1] * 0.5))
                     self.platforms_dict[platform]['translate'].xy = (platform.x, platform.y)
                     PopMatrix()
 
-            else:           
+            else:
                 self.platforms_dict[platform]['translate'].xy = (platform.x, platform.y)
 
 class ParticleEffects(Widget):
     landing_dust = ObjectProperty(ParticleSystem)
     shoot_fire = ObjectProperty(ParticleSystem)
+    game = ObjectProperty(None)
 
     def emit_dust(self, dt, name = 'ParticleEffects/templates/jellyfish.pex'):
         with self.canvas:
             self.landing_dust = ParticleSystem(name)
-            self.landing_dust.emitter_x = self.parent.player_character.x
-            self.landing_dust.emitter_y = self.parent.player_character.y - self.parent.player_character.size[1]*.35  
+            self.landing_dust.emitter_x = self.game.player_character.x
+            self.landing_dust.emitter_y = self.game.player_character.y - self.game.player_character.size[1]*.35
             self.landing_dust.start(duration = .3)
             Clock.schedule_once(self.landing_dust.stop, timeout = .3)
 
     def fire_forward(self, dt, name = 'ParticleEffects/templates/shoot_spell.pex'):
         with self.canvas:
             self.shoot_fire = ParticleSystem(name)
-            self.shoot_fire.emitter_x = self.parent.player_character.x + self.parent.player_character.size[0]*.5
-            self.shoot_fire.emitter_y = self.parent.player_character.y  
+            self.shoot_fire.emitter_x = self.game.player_character.x + self.game.player_character.size[0]*.5
+            self.shoot_fire.emitter_y = self.game.player_character.y
             self.shoot_fire.start(duration = 1)
             Clock.schedule_once(self.shoot_fire.stop, timeout = 1)
 
@@ -497,7 +511,6 @@ class ScrollingMidground(Widget):
             num_mid_objects += 1
 
     def _create_midground(self):
-        # max_jump_distance = ((3*self.parent.player_character.jump_velocity)/self.parent.player_character.gravity)*self.speed
         midground = ScrollImage()
         rand_midground = random.randint(0, 3)
         midground.texture = self.midelements[rand_midground]
@@ -517,12 +530,12 @@ class ScrollingMidground(Widget):
                 with self.canvas:
                     PushMatrix()
                     self.midground_dict[midground]['translate'] = Translate()
-                    self.midground_dict[midground]['Quad'] = Quad(source=midground.texture, points=(-midground.size[0] * 0.5, -midground.size[1] * 0.5, 
-                        midground.size[0] * 0.5,  -midground.size[1] * 0.5, midground.size[0] * 0.5,  midground.size[1] * 0.5, 
-                        -midground.size[0] * 0.5,  midground.size[1] * 0.5))    
+                    self.midground_dict[midground]['Quad'] = Quad(source=midground.texture, points=(-midground.size[0] * 0.5, -midground.size[1] * 0.5,
+                        midground.size[0] * 0.5, -midground.size[1] * 0.5, midground.size[0] * 0.5, midground.size[1] * 0.5,
+                        -midground.size[0] * 0.5, midground.size[1] * 0.5))
                     self.midground_dict[midground]['translate'].xy = (midground.x, midground.y)
                     PopMatrix()
-            else:           
+            else:
                 self.midground_dict[midground]['translate'].xy = (midground.x, midground.y)
 
     def _update_midground(self, dt):
@@ -568,7 +581,6 @@ class ScrollingBackground(Widget):
             num_back_objects += 1
 
     def _create_background(self):
-        # max_jump_distance = ((3*self.parent.player_character.jump_velocity)/self.parent.player_character.gravity)*self.speed
         background = ScrollImage()
         rand_background = random.randint(0, 1)
         background.texture = self.backelements[rand_background]
@@ -610,25 +622,61 @@ class ScrollingBackground(Widget):
                 background = self._create_background()
                 self.backgrounds.append(background)
 
-class MenuScreen(Widget):
+# class ImageButton(Image):
+# state = StringProperty('normal')
+# background_normal = StringProperty(None)
+# background_down = StringProperty(None)
+
+# def __init__(self, **kwargs):
+# super(ImageButton, self).__init__(**kwargs)
+
+# def on_touch_down(self, touch):
+# if self.collide_point(*touch.pos):
+# touch.grab(self)
+# self.state = 'down'
+# else:
+# return False
+
+# def on_touch_up(self, touch):
+# if touch.grab_current is self:
+# self.state = 'normal'
+# touch.ungrab(self)
+
+# def on_state(self, instance, value):
+# if value == 'normal':
+# self.source = self.background_normal
+# elif value == 'down':
+# if self.background_down is not None:
+# self.source = self.background_down
+
+class MenuScreen(Screen):
     foreground = ObjectProperty(None)
 
     def __init__(self, **kwargs):
         super(MenuScreen, self).__init__(**kwargs)
+
+    def button_callback(self, btn_id):
+        if btn_id == 'quit':
+            Window.close()
+        elif btn_id == 'new':
+            self.manager.current = 'game'
+            self.manager.get_screen('game').start()
 
 
 Factory.register('RunningGame', RunningGame)
 Factory.register('DebugPanel', DebugPanel)
 Factory.register('ScrollingMidground', ScrollingMidground)
 Factory.register('ScrollingBackground', ScrollingBackground)
-Factory.register('MenuScreen', MenuScreen)
 Factory.register('ScoreDisplay', ScoreDisplay)
 Factory.register('LivesDisplay', LivesDisplay)
 
 
 class RunningGameApp(App):
     def build(self):
-        pass
+        sm = ScreenManager(transition = FadeTransition())
+        sm.add_widget(MenuScreen(name='menu'))
+        sm.add_widget(RunningGame(name='game'))
+        return sm
 
 if __name__ == '__main__':
     RunningGameApp().run()
