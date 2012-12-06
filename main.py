@@ -47,7 +47,7 @@ class RunningGame(Screen):
         self.add_widget(self.foreground)
         self.add_widget(self.score)
         self.add_widget(self.life_count)
-        # self.add_widget(self.confined_enemy)
+        self.add_widget(self.confined_enemy)
         self.add_widget(self.player_character)
         self.add_widget(self.landing_fx)
 
@@ -99,7 +99,7 @@ class PlayerCharacter(Widget):
 
     game = ObjectProperty(None)
 
-    def __init__(self, parent, **kwargs):
+    def __init__(self, **kwargs):
         super(PlayerCharacter, self).__init__(**kwargs)
         self.texture = 'media/art/characters/char1-idle1.png'
         self.x = Window.width *.2
@@ -142,10 +142,10 @@ class PlayerCharacter(Widget):
         self.y = Window.height *.5
         self.y_velocity = 0
 
-        if self.parent.life_count.lives > 0:
-            self.parent.life_count.decrease_lives()
+        if self.parent.parent.life_count.lives > 0:
+            self.parent.parent.life_count.decrease_lives()
 
-        if self.parent.life_count.lives == 0:
+        if self.parent.parent.life_count.lives == 0:
             print 'game over'   
 
     def _advance_time(self, dt):
@@ -165,7 +165,7 @@ class PlayerCharacter(Widget):
                 self.numJumps -= 1
             self.isJumping = False
             Clock.schedule_once(self._set_jumping, .25)
-            self.parent.landing_fx.emit_dust(.1)
+            self.parent.parent.landing_fx.emit_dust(.1)
             
         if not self.isOnGround:
             self.y_velocity -= gravity * dt
@@ -232,11 +232,11 @@ class PlayerCharacter(Widget):
 
 class ScoreDisplay(Widget):
     score = NumericProperty(0)
-    size_hint = (.3,.1)
-    pos = (Window.width * .8, Window.height * .85)
 
     def __init__(self, **kwargs):
         super(ScoreDisplay, self).__init__(**kwargs)
+        self.size_hint = (.3,.1)
+        self.pos = (Window.width * .72, Window.height * .89)
         Clock.schedule_once(self.update_score)
 
     def update_score(self, dt):
@@ -247,8 +247,11 @@ class ScoreDisplay(Widget):
 
 class LivesDisplay(Widget):
     lives = NumericProperty(3)
-    size_hint = (.3,.1)
-    pos = (Window.width * .05, Window.height * .85)
+
+    def __init__(self, **kwargs):
+        super(LivesDisplay, self).__init__(**kwargs)
+        self.size_hint = (.3,.1)
+        self.pos = (0, Window.height * .89)
 
     def increase_lives(self):
         self.lives += 1
@@ -277,8 +280,13 @@ class ConfinedEnemy(Widget):
         Clock.schedule_once(self._update, timeout=2)
 
     def _init_enemies(self, dt):
-        enemy = self._create_enemy()
-        self.enemies.append(enemy)      
+        enemyxspace = Window.width * 2
+        numenemies = 0  
+        while enemyxspace > 0:
+            enemy = self._create_enemy()
+            self.enemies.append(enemy)
+            enemyxspace -= enemy.size[0]
+            numenemies += 1
 
         # platformxspace = Window.width * 2
         # numplats = 0
@@ -290,12 +298,15 @@ class ConfinedEnemy(Widget):
 
     def _create_enemy(self):
         enemy = Enemy()
+        enemy.spacing = 200
         enemy.y = 100
-        enemy.x = 100
+        enemy.x = self.current_enemy_x + enemy.spacing
         print 'created enemy at: ', enemy.x
         enemy.texture = 'media/art/characters/testcharacter.png'
         texture = Image(source = 'media/art/characters/testcharacter.png')
         enemy.size = texture.texture_size
+        self.current_enemy_x += enemy.size[0] + enemy.spacing
+        return enemy
         # self.parent.add_confined_enemy(enemy)
 
             # max_jump_distance = ((3*self.parent.player_character.jump_velocity)/self.parent.player_character.gravity)*self.speed
@@ -312,8 +323,8 @@ class ConfinedEnemy(Widget):
             # return platform
 
     def _update(self, dt):
-        self._render()
         self._advance_time(dt)
+        self._render()
         Clock.schedule_once(self._update)
 
     def _advance_time(self, dt):
@@ -375,6 +386,8 @@ class Platform(object):
 class ScrollingForeground(Widget):
     speed = NumericProperty(200)
     current_platform_x = NumericProperty(0)
+
+    game = ObjectProperty(None)
 
     def __init__(self, **kwargs):
         super(ScrollingForeground, self).__init__(**kwargs)
