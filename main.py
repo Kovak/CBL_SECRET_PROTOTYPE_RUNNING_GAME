@@ -117,7 +117,7 @@ class PlayerCharacter(Widget):
         Clock.schedule_once(self._update)
 
     def _check_collision(self):
-        print "checking collision: ", len(self.game.foreground.platforms)
+        # print "checking collision: ", len(self.game.foreground.platforms)
         for each in self.game.foreground.platforms:
             if self.x >= each.x - each.size[0] * .5 and self.x <= each.x + each.size[0] * .5:
                 if each.y + each.size[1]*.5 >= self.y - self.size[1] *.5 and each.y + each.size[1]*.5 - 10 < self.y - self.size[1] *.5:
@@ -276,73 +276,46 @@ class ConfinedEnemy(Widget):
         super(ConfinedEnemy, self).__init__(**kwargs)
         self.enemies = list()
         self.enemies_dict = dict()
-        Clock.schedule_once(self._init_enemies)
-        Clock.schedule_once(self._update, timeout=2)
+        # Clock.schedule_once(self._init_enemies)
+        # Clock.schedule_once(self._update, timeout=2)
 
-    def _init_enemies(self, dt):
-        enemyxspace = Window.width * 2
-        numenemies = 0  
-        while enemyxspace > 0:
-            enemy = self._create_enemy()
-            self.enemies.append(enemy)
-            enemyxspace -= enemy.size[0]
-            numenemies += 1
-
-        # platformxspace = Window.width * 2
-        # numplats = 0
-        # while platformxspace > 0:
-        #     platform = self._create_platform()
-        #     self.platforms.append(platform)
-        #     platformxspace -= platform.size[0]
-        #     numplats += 1         
-
-    def _create_enemy(self):
+    def _create_enemy(self, plat_y, plat_x, plat_size):
         enemy = Enemy()
-        enemy.spacing = 200
-        enemy.y = 100
-        enemy.x = self.current_enemy_x + enemy.spacing
+        enemy.min = plat_x - plat_size / 2
+        enemy.max = plat_x + plat_size / 2
+        enemy.y = plat_y
+        enemy.x = plat_x
         print 'created enemy at: ', enemy.x
         enemy.texture = 'media/art/characters/testcharacter.png'
         texture = Image(source = 'media/art/characters/testcharacter.png')
         enemy.size = texture.texture_size
-        self.current_enemy_x += enemy.size[0] + enemy.spacing
-        return enemy
-        # self.parent.add_confined_enemy(enemy)
-
-            # max_jump_distance = ((3*self.parent.player_character.jump_velocity)/self.parent.player_character.gravity)*self.speed
-            # platform = Platform()
-            # randPlatform = random.randint(0, 2)
-            # platform.spacing = random.randint(0, max_jump_distance)
-            # platform.y = 0
-            # platform.x = self.current_platform_x + platform.spacing
-            # print 'created platform at: ', platform.x
-            # platform.texture = self.listofelements[randPlatform]
-            # texture = Image(source = self.listofelements[randPlatform])
-            # platform.size = texture.texture_size
-            # self.current_platform_x += platform.size[0] + platform.spacing
-            # return platform
-
-    def _update(self, dt):
-        self._advance_time(dt)
-        self._render()
-        Clock.schedule_once(self._update)
+        enemy.test = True
+        enemy.left = True
+        self.enemies.append(enemy)
 
     def _advance_time(self, dt):
         for enemy in self.enemies:
-            enemy.x -= self.speed * dt
-            if enemy.x < -enemy.size[0]:
-                self.current_enemy_x -= enemy.size[0] + enemy.spacing
-                self.enemies.pop(self.enemies.index(enemy))
-                enemy = self._create_enemy()
-                self.enemies.append(enemy)
+            enemy.min -= self.speed * dt
+            enemy.max -= self.speed * dt
 
-        # for platform in self.platforms:
-        #     platform.x -= self.speed * dt
-        #     if platform.x < -platform.size[0]:
-        #         self.current_platform_x -= platform.size[0] + platform.spacing
-        #         self.platforms.pop(self.platforms.index(platform))
-        #         platform = self._create_platform()
-        #         self.platforms.append(platform)
+            if enemy.left == True:
+                enemy.previous = enemy.x
+                enemy.x -= self.speed * dt * 1.5
+            
+            if enemy.x < enemy.min:
+                enemy.right = True
+                enemy.left = False
+                enemy.x += self.speed * dt*2
+
+            if enemy.x > enemy.max:
+                enemy.left = True
+                enemy.right = False
+                enemy.x -= self.speed * dt *1.5
+                # print 'enem max', enemy.max
+
+            if enemy.x < -100:
+                # self.current_enemy_x -= enemy.size[0] + enemy.spacing
+                self.enemies.pop(self.enemies.index(enemy))
 
     def _render(self):
         for enemy in self.enemies:
@@ -359,22 +332,6 @@ class ConfinedEnemy(Widget):
 
             else:           
                 self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
-
-
-        # for platform in self.platforms:
-        #     if platform not in self.platforms_dict:
-        #         self.platforms_dict[platform] = dict()
-        #         with self.canvas:
-        #             PushMatrix()
-        #             self.platforms_dict[platform]['translate'] = Translate()
-        #             self.platforms_dict[platform]['Quad'] = Quad(source=platform.texture, points=(-platform.size[0] * 0.5, -platform.size[1] * 0.5, 
-        #                 platform.size[0] * 0.5,  -platform.size[1] * 0.5, platform.size[0] * 0.5,  platform.size[1] * 0.5, 
-        #                 -platform.size[0] * 0.5,  platform.size[1] * 0.5))    
-        #             self.platforms_dict[platform]['translate'].xy = (platform.x, platform.y)
-        #             PopMatrix()
-
-        #     else:           
-        #         self.platforms_dict[platform]['translate'].xy = (platform.x, platform.y)
 
 
 class Platform(object):
@@ -414,8 +371,8 @@ class ScrollingForeground(Widget):
     #     Clock.schedule_once(self._init_platforms, timeout=2)
     #     Clock.schedule_once(self._update, timeout=1)
 
-    def _increase_platform_speed(self, dt):
-        self.speed += 10
+    # def _increase_platform_speed(self, dt):
+    #     self.speed += 10
 
     def _init_platforms(self, dt):
         platformxspace = Window.width * 2
@@ -438,11 +395,18 @@ class ScrollingForeground(Widget):
             texture = Image(source = self.listofelements[randPlatform])
             platform.size = texture.texture_size
             self.current_platform_x += platform.size[0] + platform.spacing
+
+            platform.confined_enemy = random.randint(3,4)
+            if platform.confined_enemy == 3:
+                platform.enemy = self.parent.parent.confined_enemy._create_enemy(plat_y = platform.y + platform.size[1]*1.2, plat_x = platform.x, plat_size = platform.size[0])
+                print 'created enemy'
             return platform
 
     def _update(self, dt):
         self._advance_time(dt)
         self._render()
+        self.parent.parent.confined_enemy._advance_time(dt)
+        self.parent.parent.confined_enemy._render()
         Clock.schedule_once(self._update)
 
     def _advance_time(self, dt):
