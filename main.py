@@ -42,12 +42,14 @@ class RunningGame(Screen):
         self.life_count = LivesDisplay()
         self.score = ScoreDisplay()
         self.confined_enemy = ConfinedEnemy()
+        self.coin = Coin()
         self.add_widget(self.background)
         self.add_widget(self.midground)
         self.add_widget(self.foreground)
         self.add_widget(self.score)
         self.add_widget(self.life_count)
         self.add_widget(self.confined_enemy)
+        self.add_widget(self.coin)
         self.add_widget(self.player_character)
         self.add_widget(self.landing_fx)
 
@@ -263,14 +265,10 @@ class Enemy(object):
     x, y = -500, -500
     texture = None
     size = (0, 0)
-    spacing = 0
 
 class ConfinedEnemy(Widget):
     speed = NumericProperty(200)
     texture = StringProperty(None)
-    anim_frame_counter = NumericProperty(0)
-    isRendered = BooleanProperty(False)
-    current_enemy_x = NumericProperty(0)
 
     def __init__(self, **kwargs):
         super(ConfinedEnemy, self).__init__(**kwargs)
@@ -281,16 +279,17 @@ class ConfinedEnemy(Widget):
 
     def _create_enemy(self, plat_y, plat_x, plat_size):
         enemy = Enemy()
-        enemy.min = plat_x - plat_size / 2
-        enemy.max = plat_x + plat_size / 2
-        enemy.y = plat_y
-        enemy.x = plat_x
         print 'created enemy at: ', enemy.x
         enemy.texture = 'media/art/characters/testcharacter.png'
         texture = Image(source = 'media/art/characters/testcharacter.png')
         enemy.size = texture.texture_size
+        enemy.min = plat_x - plat_size / 2
+        enemy.max = plat_x + plat_size / 2
+        enemy.y = plat_y
+        enemy.x = plat_x
         enemy.test = True
         enemy.left = True
+        enemy.right = False
         self.enemies.append(enemy)
 
     def _advance_time(self, dt):
@@ -299,22 +298,20 @@ class ConfinedEnemy(Widget):
             enemy.max -= self.speed * dt
 
             if enemy.left == True:
-                enemy.previous = enemy.x
                 enemy.x -= self.speed * dt * 1.5
+
+            if enemy.right == True:
+                enemy.x += self.speed * dt * .5
             
             if enemy.x < enemy.min:
                 enemy.right = True
                 enemy.left = False
-                enemy.x += self.speed * dt*2
 
             if enemy.x > enemy.max:
                 enemy.left = True
                 enemy.right = False
-                enemy.x -= self.speed * dt *1.5
-                # print 'enem max', enemy.max
 
             if enemy.x < -100:
-                # self.current_enemy_x -= enemy.size[0] + enemy.spacing
                 self.enemies.pop(self.enemies.index(enemy))
 
     def _render(self):
@@ -332,6 +329,52 @@ class ConfinedEnemy(Widget):
 
             else:           
                 self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
+
+class ScoringObject(object):
+    x, y = -500, -500
+    texture = None
+    size = (0, 0)
+
+class Coin(Widget):
+    speed = NumericProperty(200)
+    texture = StringProperty(None)
+
+    def __init__(self, **kwargs):
+        super(Coin, self).__init__(**kwargs)
+        self.coins = list()
+        self.coins_dict = dict()
+
+    def _create_coin(self, plat_y, plat_x, plat_size):
+        coin = ScoringObject()
+        coin.texture = 'media/art/characters/char3-idle1.png'
+        texture = Image(source = 'media/art/characters/char3-idle1.png')
+        coin.size = texture.texture_size
+        coin.y = plat_y
+        coin.x = plat_x
+        print 'created coin at: ', coin.x
+        self.coins.append(coin)
+
+    def _advance_time(self, dt):
+        for coin in self.coins:
+            coin.x -= self.speed * dt
+            if coin.x < -100:
+                self.coins.pop(self.coins.index(coin))
+
+    def _render(self):
+        for coin in self.coins:
+            if coin not in self.coins_dict:
+                self.coins_dict[coin] = dict()
+                with self.canvas:
+                    PushMatrix()
+                    self.coins_dict[coin]['translate'] = Translate()
+                    self.coins_dict[coin]['Quad'] = Quad(source=coin.texture, points=(-coin.size[0] * 0.5, -coin.size[1] * 0.5, 
+                        coin.size[0] * 0.5,  -coin.size[1] * 0.5, coin.size[0] * 0.5,  coin.size[1] * 0.5, 
+                        -coin.size[0] * 0.5,  coin.size[1] * 0.5))    
+                    self.coins_dict[coin]['translate'].xy = (coin.x, coin.y)
+                    PopMatrix()
+
+            else:           
+                self.coins_dict[coin]['translate'].xy = (coin.x, coin.y)
 
 
 class Platform(object):
@@ -384,29 +427,35 @@ class ScrollingForeground(Widget):
             numplats += 1         
 
     def _create_platform(self):
-            max_jump_distance = ((3*self.game.player_character.jump_velocity)/self.game.player_character.gravity)*self.speed
-            platform = Platform()
-            randPlatform = random.randint(0, 2)
-            platform.spacing = random.randint(0, max_jump_distance)
-            platform.y = 0
-            platform.x = self.current_platform_x + platform.spacing
-            print 'created platform at: ', platform.x
-            platform.texture = self.listofelements[randPlatform]
-            texture = Image(source = self.listofelements[randPlatform])
-            platform.size = texture.texture_size
-            self.current_platform_x += platform.size[0] + platform.spacing
+        max_jump_distance = ((3*self.game.player_character.jump_velocity)/self.game.player_character.gravity)*self.speed
+        platform = Platform()
+        randPlatform = random.randint(0, 2)
+        platform.spacing = random.randint(0, max_jump_distance)
+        platform.y = 0
+        platform.x = self.current_platform_x + platform.spacing
+        print 'created platform at: ', platform.x
+        platform.texture = self.listofelements[randPlatform]
+        texture = Image(source = self.listofelements[randPlatform])
+        platform.size = texture.texture_size
+        self.current_platform_x += platform.size[0] + platform.spacing
+        print platform.size[0]
 
-            platform.confined_enemy = random.randint(3,4)
-            if platform.confined_enemy == 3:
-                platform.enemy = self.parent.parent.confined_enemy._create_enemy(plat_y = platform.y + platform.size[1]*1.2, plat_x = platform.x, plat_size = platform.size[0])
-                print 'created enemy'
-            return platform
+        # platform.confined_enemy = random.randint(0,4)
+        # if platform.confined_enemy == 3:
+        if platform.size[0] > 200:
+            platform.enemy = self.parent.parent.confined_enemy._create_enemy(plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x, plat_size = platform.size[0])
+            print 'created enemy'
+        if platform.size[0] < 200:
+            platform.coin = self.parent.parent.coin._create_coin(plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x, plat_size = platform.size[0])
+        return platform
 
     def _update(self, dt):
         self._advance_time(dt)
         self._render()
         self.parent.parent.confined_enemy._advance_time(dt)
         self.parent.parent.confined_enemy._render()
+        self.parent.parent.coin._advance_time(dt)
+        self.parent.parent.coin._render()
         Clock.schedule_once(self._update)
 
     def _advance_time(self, dt):
