@@ -64,7 +64,8 @@ class RunningGame(Screen):
             if touch.ud['swipe'] == 'up':
                 self.player_character.isJumping = True
             elif touch.ud['swipe'] == 'right':
-                self.landing_fx.fire_forward(.1)
+                # self.landing_fx.fire_forward(.1)
+                self.player_character.sword_dash = True
             elif touch.ud['swipe'] == 'down':
                 self.player_character.down_dash = True
 
@@ -95,9 +96,12 @@ class PlayerCharacter(Widget):
     jump_velocity = NumericProperty(250)
     down_dash = BooleanProperty(False)
     down_dash_active = BooleanProperty(False)
+    down_dash_landing = BooleanProperty(False)
     down_dash_counter = NumericProperty(0)
     dash_landed = BooleanProperty(False)
     dash_land_counter = NumericProperty(0)
+    sword_dash = BooleanProperty(False)
+    sword_dash_counter = NumericProperty(0)
 
     game = ObjectProperty(None)
 
@@ -141,7 +145,7 @@ class PlayerCharacter(Widget):
         
 
     def die(self):
-        self.y = Window.height *.5
+        self.y = Window.height *.8
         self.y_velocity = 0
 
         if self.parent.parent.life_count.lives > 0:
@@ -186,13 +190,15 @@ class PlayerCharacter(Widget):
                 self.texture = 'media/art/characters/char1-jump1-2.png'
 
         if self.y_velocity < 0:
+            self.sword_dash = False
+            self.sword_dash_counter = 0
             if self.down_dash == False:
                 if self.anim_frame_counter == 0 or self.anim_frame_counter == 2:
                     self.texture = 'media/art/characters/char1-jump2.png'
                 if self.anim_frame_counter == 1 or self.anim_frame_counter == 3:
                     self.texture = 'media/art/characters/char1-jump2-2.png'
             if self.down_dash == True:
-                self.texture = 'media/art/characters/char1-downdash_fall.png'
+                self.texture = 'media/art/characters/char1-downdash_fall2.png'
                 self.down_dash_active = True
 
         if self.y_velocity == 0:
@@ -200,10 +206,29 @@ class PlayerCharacter(Widget):
             if self.down_dash_active == True:
                 self.texture = 'media/art/characters/char1-downdash_land1.png'
                 self.down_dash_counter += 1
-                if self.down_dash_counter > 15:
+                if self.down_dash_counter > 5:
                     self.down_dash_active = False
+                    self.down_dash_landing = True
+                    self.down_dash_counter = 0
+            if self.down_dash_landing == True:
+                self.texture = 'media/art/characters/char1-downdash_land2.png'
+                self.down_dash_counter += 1
+                if self.down_dash_counter > 15:
+                    self.down_dash_landing = False
                     self.down_dash_counter =0
-            if self.down_dash_active == False:
+            if self.sword_dash == True:
+                self.texture = 'media/art/characters/char1-sworddash1.png'
+                self.sword_dash_counter += 1
+                if self.sword_dash_counter > 15:
+                    self.texture = 'media/art/characters/char1-sworddash2.png'
+                if self.sword_dash_counter > 25:
+                    self.texture = 'media/art/characters/char1-sworddash3.png'
+                if self.sword_dash_counter > 35:
+                    self.texture = 'media/art/characters/char1-sworddash4.png'
+                if self.sword_dash_counter > 40:
+                    self.sword_dash_counter = 0
+                    self.sword_dash = False
+            if self.down_dash_active == False and self.down_dash_landing == False and self.sword_dash == False:
                 if self.anim_frame_counter == 0:
                     self.texture = 'media/art/characters/char1-idle1.png'
                 if self.anim_frame_counter == 1:
@@ -247,8 +272,12 @@ class ScoreDisplay(Widget):
     def increase_score(self, dt):
         self.score += 1
 
+    def coin_collected(self):
+        self.score += 10
+        # print 'SCORED'
+
 class LivesDisplay(Widget):
-    lives = NumericProperty(3)
+    lives = NumericProperty(5)
 
     def __init__(self, **kwargs):
         super(LivesDisplay, self).__init__(**kwargs)
@@ -288,8 +317,14 @@ class ConfinedEnemy(Widget):
         enemy.y = plat_y
         enemy.x = plat_x
         enemy.test = True
-        enemy.left = True
-        enemy.right = False
+        enemy.move_left = True
+        enemy.move_right = False
+        enemy.right = enemy.x + enemy.size[0] * .5
+        # enemy.left = enemy.x - enemy.size[0] * .5
+        enemy.top = enemy.y + enemy.size[1] * .5
+        # enemy.bottom = enemy.y - enemy.size[1] *.5
+        enemy.killed = False
+        enemy._check_health = True
         self.enemies.append(enemy)
 
     def _advance_time(self, dt):
@@ -297,19 +332,19 @@ class ConfinedEnemy(Widget):
             enemy.min -= self.speed * dt
             enemy.max -= self.speed * dt
 
-            if enemy.left == True:
+            if enemy.move_left == True:
                 enemy.x -= self.speed * dt * 1.5
 
-            if enemy.right == True:
+            if enemy.move_right == True:
                 enemy.x += self.speed * dt * .5
             
             if enemy.x < enemy.min:
-                enemy.right = True
-                enemy.left = False
+                enemy.move_right = True
+                enemy.move_left = False
 
             if enemy.x > enemy.max:
-                enemy.left = True
-                enemy.right = False
+                enemy.move_left = True
+                enemy.move_right = False
 
             if enemy.x < -100:
                 self.enemies.pop(self.enemies.index(enemy))
@@ -327,7 +362,16 @@ class ConfinedEnemy(Widget):
                     self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
                     PopMatrix()
 
-            else:           
+            if self.parent.parent.player_character.collide_widget(enemy) == True and enemy._check_health == True and self.parent.parent.player_character.sword_dash == False:
+                enemy._check_health = False
+                self.parent.parent.player_character.die()
+            if self.parent.parent.player_character.collide_widget(enemy) == True and enemy._check_health == True and self.parent.parent.player_character.sword_dash == True:
+                enemy.killed = True
+                enemy._check_health = False
+                self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
+                print 'enemy killed'
+
+            elif enemy.killed == False:           
                 self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
 
 class ScoringObject(object):
@@ -346,13 +390,20 @@ class Coin(Widget):
 
     def _create_coin(self, plat_y, plat_x, plat_size):
         coin = ScoringObject()
-        coin.texture = 'media/art/characters/char3-idle1.png'
-        texture = Image(source = 'media/art/characters/char3-idle1.png')
+        coin.texture = 'media/art/collectibles/goldcoin1.png'
+        texture = Image(source = 'media/art/collectibles/goldcoin1.png')
         coin.size = texture.texture_size
         coin.y = plat_y
         coin.x = plat_x
+        coin.right = coin.x + coin.size[0] * .5
+        # coin.left = coin.x - coin.size[0] * .5
+        coin.top = coin.y + coin.size[1] * .5
+        # coin.bottom = coin.y - coin.size[1] *.5
+        coin.collected = False
+        coin._check_collision = True
+
         print 'created coin at: ', coin.x
-        self.coins.append(coin)
+        self.parent.parent.coin.coins.append(coin)
 
     def _advance_time(self, dt):
         for coin in self.coins:
@@ -373,9 +424,15 @@ class Coin(Widget):
                     self.coins_dict[coin]['translate'].xy = (coin.x, coin.y)
                     PopMatrix()
 
-            else:           
-                self.coins_dict[coin]['translate'].xy = (coin.x, coin.y)
+            if self.parent.parent.player_character.collide_widget(coin) == True and coin._check_collision == True:
+                coin.collected = True
+                coin._check_collision = False
+                self.coins_dict[coin]['translate'].xy = (-100, coin.y)
+                self.parent.parent.score.coin_collected()
 
+
+            elif coin.collected == False:       
+                self.coins_dict[coin]['translate'].xy = (coin.x, coin.y)
 
 class Platform(object):
     x, y = -500, -500
