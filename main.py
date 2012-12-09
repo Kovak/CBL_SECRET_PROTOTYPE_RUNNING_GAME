@@ -66,8 +66,10 @@ class RunningGame(Screen):
             elif touch.ud['swipe'] == 'right':
                 # self.landing_fx.fire_forward(.1)
                 self.player_character.sword_dash = True
+                self.player_character.offensive_move = True
             elif touch.ud['swipe'] == 'down':
                 self.player_character.down_dash = True
+                self.player_character.offensive_move = True
 
     def on_touch_move(self, touch):
         if touch.y > touch.oy and abs(touch.y - touch.oy) > 20 and abs(touch.y - touch.oy) > abs(touch.x - touch.ox):
@@ -102,6 +104,7 @@ class PlayerCharacter(Widget):
     dash_land_counter = NumericProperty(0)
     sword_dash = BooleanProperty(False)
     sword_dash_counter = NumericProperty(0)
+    offensive_move = BooleanProperty(False)
 
     game = ObjectProperty(None)
 
@@ -109,7 +112,7 @@ class PlayerCharacter(Widget):
         super(PlayerCharacter, self).__init__(**kwargs)
         self.texture = 'media/art/characters/char1-idle1.png'
         self.x = Window.width *.2
-        self.y = Window.height *.5
+        self.y = Window.height * .2
         self.size = (82, 150)
         self.size_hint = (None, None)
         self.render_dict = dict()
@@ -145,14 +148,15 @@ class PlayerCharacter(Widget):
         
 
     def die(self):
-        self.y = Window.height *.8
+        self.y = Window.height *.2
         self.y_velocity = 0
+        self.down_dash_active = False
 
         if self.parent.parent.life_count.lives > 0:
             self.parent.parent.life_count.decrease_lives()
 
         if self.parent.parent.life_count.lives == 0:
-            print 'game over'   
+            self.parent.parent.manager.current = 'replay'
 
     def _advance_time(self, dt):
         landed = False
@@ -169,6 +173,8 @@ class PlayerCharacter(Widget):
                 self.y_velocity += self.jump_velocity
                 self.isMidJump = True
                 self.numJumps -= 1
+            self.sword_dash = False
+            self.sword_dash_counter = 0
             self.isJumping = False
             Clock.schedule_once(self._set_jumping, .25)
             self.parent.parent.landing_fx.emit_dust(.1)
@@ -190,8 +196,6 @@ class PlayerCharacter(Widget):
                 self.texture = 'media/art/characters/char1-jump1-2.png'
 
         if self.y_velocity < 0:
-            self.sword_dash = False
-            self.sword_dash_counter = 0
             if self.down_dash == False:
                 if self.anim_frame_counter == 0 or self.anim_frame_counter == 2:
                     self.texture = 'media/art/characters/char1-jump2.png'
@@ -213,21 +217,23 @@ class PlayerCharacter(Widget):
             if self.down_dash_landing == True:
                 self.texture = 'media/art/characters/char1-downdash_land2.png'
                 self.down_dash_counter += 1
-                if self.down_dash_counter > 15:
+                if self.down_dash_counter > 10:
                     self.down_dash_landing = False
-                    self.down_dash_counter =0
+                    self.down_dash_counter = 0
+                    self.offensive_move = False
             if self.sword_dash == True:
                 self.texture = 'media/art/characters/char1-sworddash1.png'
                 self.sword_dash_counter += 1
-                if self.sword_dash_counter > 15:
+                if self.sword_dash_counter > 5:
                     self.texture = 'media/art/characters/char1-sworddash2.png'
-                if self.sword_dash_counter > 25:
+                if self.sword_dash_counter > 11:
                     self.texture = 'media/art/characters/char1-sworddash3.png'
-                if self.sword_dash_counter > 35:
+                if self.sword_dash_counter > 16:
                     self.texture = 'media/art/characters/char1-sworddash4.png'
-                if self.sword_dash_counter > 40:
+                if self.sword_dash_counter > 20:
                     self.sword_dash_counter = 0
                     self.sword_dash = False
+                    self.offensive_move = False
             if self.down_dash_active == False and self.down_dash_landing == False and self.sword_dash == False:
                 if self.anim_frame_counter == 0:
                     self.texture = 'media/art/characters/char1-idle1.png'
@@ -312,6 +318,7 @@ class ConfinedEnemy(Widget):
         enemy.texture = 'media/art/characters/testcharacter.png'
         texture = Image(source = 'media/art/characters/testcharacter.png')
         enemy.size = texture.texture_size
+        enemy.bbox = enemy.size
         enemy.min = plat_x - plat_size / 2
         enemy.max = plat_x + plat_size / 2
         enemy.y = plat_y
@@ -324,7 +331,9 @@ class ConfinedEnemy(Widget):
         enemy.top = enemy.y + enemy.size[1] * .5
         # enemy.bottom = enemy.y - enemy.size[1] *.5
         enemy.killed = False
-        enemy._check_health = True
+        enemy.killed_player = False
+        enemy.check_health = True
+        print 'enemy size',enemy.size
         self.enemies.append(enemy)
 
     def _advance_time(self, dt):
@@ -361,13 +370,12 @@ class ConfinedEnemy(Widget):
                         -enemy.size[0] * 0.5,  enemy.size[1] * 0.5))    
                     self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
                     PopMatrix()
-
-            if self.parent.parent.player_character.collide_widget(enemy) == True and enemy._check_health == True and self.parent.parent.player_character.sword_dash == False:
-                enemy._check_health = False
+            if self.parent.parent.player_character.collide_widget(enemy) == True and self.parent.parent.player_character.offensive_move == False and enemy.killed == False and abs(enemy.x - self.parent.parent.player_character.x) < 50 and abs(enemy.y - self.parent.parent.player_character.y) < 100 and enemy.killed_player == False:
                 self.parent.parent.player_character.die()
-            if self.parent.parent.player_character.collide_widget(enemy) == True and enemy._check_health == True and self.parent.parent.player_character.sword_dash == True:
+                enemy.killed_player = True
+            if self.parent.parent.player_character.collide_widget(enemy) == True and self.parent.parent.player_character.offensive_move == True and enemy.check_health == True and abs(enemy.x - self.parent.parent.player_character.x) < 50 and abs(enemy.y - self.parent.parent.player_character.y) < 100:
                 enemy.killed = True
-                enemy._check_health = False
+                enemy.check_health = False
                 self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
                 print 'enemy killed'
 
@@ -393,6 +401,7 @@ class Coin(Widget):
         coin.texture = 'media/art/collectibles/goldcoin1.png'
         texture = Image(source = 'media/art/collectibles/goldcoin1.png')
         coin.size = texture.texture_size
+        coin.bbox = coin.size
         coin.y = plat_y
         coin.x = plat_x
         coin.right = coin.x + coin.size[0] * .5
@@ -402,7 +411,7 @@ class Coin(Widget):
         coin.collected = False
         coin._check_collision = True
 
-        print 'created coin at: ', coin.x
+        print 'coin size ', coin.size
         self.parent.parent.coin.coins.append(coin)
 
     def _advance_time(self, dt):
@@ -424,7 +433,7 @@ class Coin(Widget):
                     self.coins_dict[coin]['translate'].xy = (coin.x, coin.y)
                     PopMatrix()
 
-            if self.parent.parent.player_character.collide_widget(coin) == True and coin._check_collision == True:
+            if self.parent.parent.player_character.collide_widget(coin) == True and coin._check_collision == True and abs(coin.x - self.parent.parent.player_character.x) < 45 and abs(coin.y - self.parent.parent.player_character.y) < 70:
                 coin.collected = True
                 coin._check_collision = False
                 self.coins_dict[coin]['translate'].xy = (-100, coin.y)
@@ -443,6 +452,7 @@ class Platform(object):
 class ScrollingForeground(Widget):
     speed = NumericProperty(200)
     current_platform_x = NumericProperty(0)
+    initial_platforms = NumericProperty(0)
 
     game = ObjectProperty(None)
 
@@ -455,21 +465,9 @@ class ScrollingForeground(Widget):
         self.platforms = list()
         self.platforms_dict = dict()
         Clock.schedule_once(self._init_platforms)
-        # Clock.schedule_once(self.startup_platform)
         Clock.schedule_once(self._update)
         #Clock.schedule_interval(self._increase_platform_speed, 1.0)
 
-    # def startup_platform(self, dt):
-    #     platform = Platform()
-    #     platform.y = 0
-    #     platform.x = 0
-    #     platform.texture = self.listofelements[2]
-    #     texture = Image(source = self.listofelements[2])
-    #     platform.size = texture.texture.size
-    #     self.platforms.append(platform)
-    #     self._render()
-    #     Clock.schedule_once(self._init_platforms, timeout=2)
-    #     Clock.schedule_once(self._update, timeout=1)
 
     # def _increase_platform_speed(self, dt):
     #     self.speed += 10
@@ -484,27 +482,41 @@ class ScrollingForeground(Widget):
             numplats += 1         
 
     def _create_platform(self):
-        max_jump_distance = ((3*self.game.player_character.jump_velocity)/self.game.player_character.gravity)*self.speed
-        platform = Platform()
-        randPlatform = random.randint(0, 2)
-        platform.spacing = random.randint(0, max_jump_distance)
-        platform.y = 0
-        platform.x = self.current_platform_x + platform.spacing
-        print 'created platform at: ', platform.x
-        platform.texture = self.listofelements[randPlatform]
-        texture = Image(source = self.listofelements[randPlatform])
-        platform.size = texture.texture_size
-        self.current_platform_x += platform.size[0] + platform.spacing
-        print platform.size[0]
+        if self.initial_platforms < 2:
+            platform = Platform()
+            platform.y = 0
+            platform.x = self.current_platform_x
+            platform.spacing = 0
+            platform.texture = self.listofelements[2]
+            texture = Image(source = self.listofelements[2])
+            platform.size = texture.texture_size
+            self.current_platform_x += platform.size[0] + platform.spacing
+            self.initial_platforms += 1
+            print 'initial platform', self.initial_platforms
+            return platform
+        
+        else:
+            max_jump_distance = ((3*self.game.player_character.jump_velocity)/self.game.player_character.gravity)*self.speed
+            platform = Platform()
+            randPlatform = random.randint(0, 2)
+            platform.spacing = random.randint(0, max_jump_distance)
+            platform.y = 0
+            platform.x = self.current_platform_x + platform.spacing
+            print 'created platform at: ', platform.x
+            platform.texture = self.listofelements[randPlatform]
+            texture = Image(source = self.listofelements[randPlatform])
+            platform.size = texture.texture_size
+            self.current_platform_x += platform.size[0] + platform.spacing
+            print platform.size[0]
 
-        # platform.confined_enemy = random.randint(0,4)
-        # if platform.confined_enemy == 3:
-        if platform.size[0] > 200:
-            platform.enemy = self.parent.parent.confined_enemy._create_enemy(plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x, plat_size = platform.size[0])
-            print 'created enemy'
-        if platform.size[0] < 200:
-            platform.coin = self.parent.parent.coin._create_coin(plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x, plat_size = platform.size[0])
-        return platform
+            # platform.confined_enemy = random.randint(0,4)
+            # if platform.confined_enemy == 3:
+            if platform.size[0] > 200:
+                platform.enemy = self.parent.parent.confined_enemy._create_enemy(plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x, plat_size = platform.size[0])
+                print 'created enemy'
+            if platform.size[0] < 200:
+                platform.coin = self.parent.parent.coin._create_coin(plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x, plat_size = platform.size[0])
+            return platform
 
     def _update(self, dt):
         self._advance_time(dt)
@@ -745,6 +757,19 @@ class MenuScreen(Screen):
             self.manager.current = 'game'
             self.manager.get_screen('game').start()
 
+class ReplayScreen(Screen):
+    foreground = ObjectProperty(None)
+
+    def __init__(self, **kwargs):
+        super(ReplayScreen, self).__init__(**kwargs)
+
+    def button_callback(self, btn_id):
+        if btn_id == 'quit':
+            Window.close()
+        elif btn_id == 'new':
+            self.manager.current = 'game'
+            self.manager.get_screen('game').start()
+
 
 Factory.register('RunningGame', RunningGame)
 Factory.register('DebugPanel', DebugPanel)
@@ -759,6 +784,7 @@ class RunningGameApp(App):
         sm = ScreenManager(transition = FadeTransition())
         sm.add_widget(MenuScreen(name='menu'))
         sm.add_widget(RunningGame(name='game'))
+        sm.add_widget(ReplayScreen(name='replay'))
         return sm
 
 if __name__ == '__main__':

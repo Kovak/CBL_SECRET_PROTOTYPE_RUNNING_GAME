@@ -32,7 +32,6 @@
             source: 'media/art/backgrounds/skybackground1.png'
             pos: root.pos
             size: self.size
-
     ScrollingBackground:
         pos: root.pos
         size: root.size
@@ -67,6 +66,60 @@
             Button:
                 name: 'quit'
                 size_hint: (1, .5)
+                background_normal: 'media/art/icons/quit_button_normal.png'
+                background_down: 'media/art/icons/quit_button_down.png'
+                on_release: root.button_callback('quit')
+
+<ReplayScreen>:
+    canvas:
+        Color: 
+            rgb: (.16796875, 0.8125, 1.)
+        Rectangle:
+            size: (root.size[0], root.size[1]*75)
+            pos: root.pos
+        Color:
+            rgb: (1., 1., 1.)
+        Rectangle:
+            source: 'media/art/backgrounds/skybackground1.png'
+            pos: root.pos
+            size: self.size
+    ScrollingBackground:
+        pos: root.pos
+        size: root.size
+    ScrollingMidground:
+        pos: root.pos
+        size: root.size
+    Widget:
+        pos: root.pos
+        size: root.size
+        canvas:
+            Color:
+                rgba: (1, 1, 1, .6)
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        Image:
+            id: center_menu
+            source: 'media/art/icons/menu_background.png'
+            pos: root.pos
+            size: root.size
+        BoxLayout:
+            size: center_menu.texture_size
+            pos: (root.x + (root.width - center_menu.texture_size[0])/2., root.y + (root.height - center_menu.texture_size[1])/2.)
+            orientation: 'vertical'
+            padding: 40
+            spacing: 40
+            Label:
+                size_hint: (1, .1)
+                text: 'You Lose'
+            Button:
+                size_hint: (1, .45)
+                background_normal: 'media/art/icons/new_game_button_normal.png'
+                background_down: 'media/art/icons/new_game_button_down.png'
+                on_release: root.button_callback('new')
+            Button:
+                name: 'quit'
+                size_hint: (1, .45)
                 background_normal: 'media/art/icons/quit_button_normal.png'
                 background_down: 'media/art/icons/quit_button_down.png'
                 on_release: root.button_callback('quit')
