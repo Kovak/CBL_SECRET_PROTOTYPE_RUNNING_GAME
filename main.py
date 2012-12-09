@@ -9,6 +9,7 @@ from kivy.uix.image import Image
 from kivy.core.image import Image as CoreImage
 from kivy.uix.button import Button
 from kivy.clock import Clock
+import functools
 import random
 from kivy.graphics import Rectangle, Color, Callback, Rotate, PushMatrix, PopMatrix, Translate, Quad
 from kivy.properties import NumericProperty, StringProperty, ObjectProperty, BooleanProperty
@@ -98,7 +99,7 @@ class PlayerCharacter(Widget):
     jump_velocity = NumericProperty(250)
     down_dash = BooleanProperty(False)
     down_dash_active = BooleanProperty(False)
-    down_dash_landing = BooleanProperty(False)
+    down_dash_landed = BooleanProperty(False)
     down_dash_counter = NumericProperty(0)
     dash_landed = BooleanProperty(False)
     dash_land_counter = NumericProperty(0)
@@ -126,15 +127,16 @@ class PlayerCharacter(Widget):
         Clock.schedule_once(self._update)
 
     def _check_collision(self):
-        # print "checking collision: ", len(self.game.foreground.platforms)
+        if self.isMidJump: return False
         for each in self.game.foreground.platforms:
-            if self.x >= each.x - each.size[0] * .5 and self.x <= each.x + each.size[0] * .5:
-                if each.y + each.size[1]*.5 >= self.y - self.size[1] *.5 and each.y + each.size[1]*.5 - 10 < self.y - self.size[1] *.5:
-                    self.isOnGround = True
-                    self.y = each.y + each.size[1]*.5 + self.size[1] *.5
-                    return
-
-        self.isOnGround = False
+            if (self.center_x >= each.x) and (self.center_x <= each.x + each.size[0]):
+                tile_idx = int((self.center_x - each.x)/each.tile_size[0])
+                if tile_idx < 0 or tile_idx >= each.r: continue
+                for h in each.platform_heights[tile_idx]:
+                     if abs(self.y - (each.y + h)) < 10:
+                        self.y = each.y + h
+                        return True
+        return False
 
     def _set_jumping(self, dt):
         self.isMidJump = False
@@ -148,9 +150,9 @@ class PlayerCharacter(Widget):
         
 
     def die(self):
-        self.y = Window.height *.2
+        self.y = Window.height *.5
         self.y_velocity = 0
-        self.down_dash_active = False
+        # self.down_dash_active = False
 
         if self.parent.parent.life_count.lives > 0:
             self.parent.parent.life_count.decrease_lives()
@@ -161,27 +163,28 @@ class PlayerCharacter(Widget):
     def _advance_time(self, dt):
         landed = False
         gravity = self.gravity
-        self._check_collision()
-        if self.isOnGround and not self.isMidJump:
-            self.y_velocity -= self.y_velocity
+        is_on_ground = self._check_collision()
+        # and then set y to the platform height
+        if is_on_ground and not self.isMidJump:
+            self.y_velocity = 0
             self.numJumps = 2
 
         if self.isJumping:
             if self.numJumps > 0:
                 print 'jumping', self.numJumps
-                self.isOnGround = False
+                is_on_ground = False
                 self.y_velocity += self.jump_velocity
                 self.isMidJump = True
                 self.numJumps -= 1
-            self.sword_dash = False
-            self.sword_dash_counter = 0
             self.isJumping = False
             Clock.schedule_once(self._set_jumping, .25)
-            self.parent.parent.landing_fx.emit_dust(.1)
+            self.game.landing_fx.emit_dust(.1)
             
-        if not self.isOnGround:
+        if not is_on_ground:
             self.y_velocity -= gravity * dt
 
+        self.oy = self.y
+        self.ox = self.x
         self.y += self.y_velocity * dt
 
         if self.y < 0 - self.size[0]:
@@ -192,76 +195,87 @@ class PlayerCharacter(Widget):
         if self.y_velocity > 0:
             if self.anim_frame_counter == 0 or self.anim_frame_counter == 2:
                 self.texture = 'media/art/characters/char1-jump1.png'
+                self.size = [82, 150]
             if self.anim_frame_counter == 1 or self.anim_frame_counter == 3:
                 self.texture = 'media/art/characters/char1-jump1-2.png'
+                self.size = [82, 150]
 
         if self.y_velocity < 0:
             if self.down_dash == False:
                 if self.anim_frame_counter == 0 or self.anim_frame_counter == 2:
                     self.texture = 'media/art/characters/char1-jump2.png'
+                    self.size = [82, 150]
                 if self.anim_frame_counter == 1 or self.anim_frame_counter == 3:
                     self.texture = 'media/art/characters/char1-jump2-2.png'
+                    self.size = [82, 150]
             if self.down_dash == True:
-                self.texture = 'media/art/characters/char1-downdash_fall2.png'
+                self.texture = 'media/art/characters/char1-downdash_fall.png'
+                self.size = [124, 148]
                 self.down_dash_active = True
 
         if self.y_velocity == 0:
             self.down_dash = False
             if self.down_dash_active == True:
                 self.texture = 'media/art/characters/char1-downdash_land1.png'
+                self.size = [114, 150]
                 self.down_dash_counter += 1
                 if self.down_dash_counter > 5:
                     self.down_dash_active = False
-                    self.down_dash_landing = True
+                    self.down_dash_landed = True
                     self.down_dash_counter = 0
-            if self.down_dash_landing == True:
+            if self.down_dash_landed == True:
                 self.texture = 'media/art/characters/char1-downdash_land2.png'
+                self.size = [130, 150]
                 self.down_dash_counter += 1
                 if self.down_dash_counter > 10:
-                    self.down_dash_landing = False
+                    self.down_dash_landed = False
                     self.down_dash_counter = 0
                     self.offensive_move = False
             if self.sword_dash == True:
                 self.texture = 'media/art/characters/char1-sworddash1.png'
+                self.size = [120, 150]
                 self.sword_dash_counter += 1
                 if self.sword_dash_counter > 5:
                     self.texture = 'media/art/characters/char1-sworddash2.png'
+                    self.size = [120, 150]
                 if self.sword_dash_counter > 11:
                     self.texture = 'media/art/characters/char1-sworddash3.png'
+                    self.size = [120, 150]
                 if self.sword_dash_counter > 16:
                     self.texture = 'media/art/characters/char1-sworddash4.png'
+                    self.size = [120, 150]
                 if self.sword_dash_counter > 20:
                     self.sword_dash_counter = 0
                     self.sword_dash = False
                     self.offensive_move = False
-            if self.down_dash_active == False and self.down_dash_landing == False and self.sword_dash == False:
+            if self.down_dash_active == False and self.down_dash_landed == False and self.sword_dash == False:
                 if self.anim_frame_counter == 0:
                     self.texture = 'media/art/characters/char1-idle1.png'
+                    self.size = [82, 150]
                 if self.anim_frame_counter == 1:
                     self.texture = 'media/art/characters/char1-step1.png'
+                    self.size = [82, 150]
                 if self.anim_frame_counter == 2:
                     self.texture = 'media/art/characters/char1-idle2.png'
+                    self.size = [82, 150]
                 if self.anim_frame_counter == 3:
-                    self.texture = 'media/art/characters/char1-step2.png'       
+                    self.texture = 'media/art/characters/char1-step2.png' 
+                    self.size = [82, 150]      
     
     def _render(self):
-            if not self.isRendered:
-                with self.canvas:
-                    PushMatrix()
-                    self.render_dict['translate'] = Translate()
-                    self.render_dict['rect'] = Quad(source=self.texture, points=(-self.size[0] * 0.5, -self.size[1] * 0.5, 
-                        self.size[0] * 0.5,  -self.size[1] * 0.5, self.size[0] * 0.5, self.size[1] * 0.5, 
-                         -self.size[0] * 0.5, self.size[1] * 0.5))    
-                    self.render_dict['translate'].xy = (self.x, self.y)
-                    PopMatrix()
-                self.isRendered = True
-
-            else:
+        if not self.isRendered:
+            with self.canvas:
+                PushMatrix()
+                self.render_dict['translate'] = Translate()
+                self.render_dict['rect'] = Quad(source=self.texture, points=(0, 0, self.size[0], 0, self.size[0], self.size[1], 0, self.size[1], ))
                 self.render_dict['translate'].xy = (self.x, self.y)
-                self.render_dict['rect'].source = self.texture
-                self.render_dict['rect'].points = points=(-self.size[0] * 0.5, -self.size[1] * 0.5,
-                        self.size[0] * 0.5, -self.size[1] * 0.5, self.size[0] * 0.5, self.size[1] * 0.5,
-                         -self.size[0] * 0.5, self.size[1] * 0.5)
+                PopMatrix()
+            self.isRendered = True
+
+        else:
+            self.render_dict['translate'].xy = (self.x, self.y)
+            self.render_dict['rect'].source = self.texture
+            self.render_dict['rect'].points = points=( 0, 0, self.size[0], 0, self.size[0], self.size[1], 0, self.size[1],)
 
 class ScoreDisplay(Widget):
     score = NumericProperty(0)
@@ -373,7 +387,7 @@ class ConfinedEnemy(Widget):
             if self.parent.parent.player_character.collide_widget(enemy) == True and self.parent.parent.player_character.offensive_move == False and enemy.killed == False and abs(enemy.x - self.parent.parent.player_character.x) < 50 and abs(enemy.y - self.parent.parent.player_character.y) < 100 and enemy.killed_player == False:
                 self.parent.parent.player_character.die()
                 enemy.killed_player = True
-            if self.parent.parent.player_character.collide_widget(enemy) == True and self.parent.parent.player_character.offensive_move == True and enemy.check_health == True and abs(enemy.x - self.parent.parent.player_character.x) < 50 and abs(enemy.y - self.parent.parent.player_character.y) < 100:
+            if self.parent.parent.player_character.collide_widget(enemy) == True and self.parent.parent.player_character.offensive_move == True and enemy.check_health == True and self.parent.parent.player_character.x - enemy.x < 60 and abs(enemy.y - self.parent.parent.player_character.y) < 150:
                 enemy.killed = True
                 enemy.check_health = False
                 self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
@@ -445,26 +459,90 @@ class Coin(Widget):
 
 class Platform(object):
     x, y = -500, -500
-    texture = None
-    size = (0, 0)
-    spacing = 0
+    is_partially_off_screen = True
+    end_height = 0
+    line = 0
+
+    def __init__(self, texture_sources, tile_size = (64,64), tiles_per_level = 1, platform_type = None):
+        # takes a dictionary in the form {(r,c): filename.png} and converts it into a platform. If tile_per_level = n is provided,
+        # assumes that every nth tile can be walked upon (1 is default, so you don't have to touch it if you're just making single-sprite platforms
+        self.tile_size = tile_size
+        self.platform_type = platform_type
+        # turn filepaths into textures
+        self.textures = {x: CoreImage(texture_sources[x]).texture for x in texture_sources.keys()}
+        self.texture_sources = texture_sources
+        
+        # get number of rows and columns
+        self.r, self.c = [z+1 for z in reduce(lambda x, y : (max(x[0],y[0]), max(x[1],y[1])), texture_sources.keys())]
+        
+        self.size = (tile_size[0] * self.r, tile_size[1] * self.c)
+        
+        self.platform_heights = []
+        for r in range(self.r):
+            hs = []
+            for c in range(tiles_per_level - 1, self.c, tiles_per_level):
+                if (r,c) in texture_sources.keys(): hs.append(tile_size[1] * (c+1))
+            self.platform_heights.append(hs)
+        print self.platform_heights
 
 class ScrollingForeground(Widget):
     speed = NumericProperty(200)
-    current_platform_x = NumericProperty(0)
     initial_platforms = NumericProperty(0)
+    current_platform_x = NumericProperty(0)
+    
+    # # 25% is scaffolds, 75% floating
+    # platform_type_ratio = .25
+
+    # # maximum distance to go up or down between floating platforms
+    # platform_max_y_change = 256
+
+
+    # # maximum length of a scaffold
+    # max_length = 6
+
+    # size of tiles used for scaffolding
+    tile_size = (64,64)
+
+    # # range in distance between platforms
+    # max_distance = 300
+    # min_distance = 20
+
+    # # difficulty on a scale from 0 to 1. This effects the skewness of the distribution of distances between platforms
+    # # (0 means all distances are min_distance, 1 means all distances are max distance)
+    # difficulty = .5
+
+    lines = [
+        # top line
+        {'platform_type_ratio': 1,
+        'platform_max_y_change': 200,
+        'max_height': 3,
+        'max_length': 6,
+        'max_distance': 700,
+        'min_distance': 100,
+        'difficulty': 1,
+        'up_prob': .2,
+        'down_prob': .3},
+
+        # base line
+        {'platform_type_ratio': .2,
+        'platform_max_y_change': 0,
+        'max_height': 1,
+        'max_length': 3,
+        'max_distance': 200,
+        'min_distance': 20,
+        'difficulty': 0.6,
+        'up_prob': .1,
+        'down_prob': .4},
+    ]
 
     game = ObjectProperty(None)
 
     def __init__(self, **kwargs):
         super(ScrollingForeground, self).__init__(**kwargs)
-        self.listofelements = list()
-        self.listofelements.append('media/art/platforms/platform3.png')
-        self.listofelements.append('media/art/platforms/platform2.png')
-        self.listofelements.append('media/art/platforms/platform1.png')
         self.platforms = list()
         self.platforms_dict = dict()
-        Clock.schedule_once(self._init_platforms)
+        Clock.schedule_once(functools.partial(self._init_platform, 0, None))
+        Clock.schedule_once(functools.partial(self._init_platform, 1, None))
         Clock.schedule_once(self._update)
         #Clock.schedule_interval(self._increase_platform_speed, 1.0)
 
@@ -472,51 +550,128 @@ class ScrollingForeground(Widget):
     # def _increase_platform_speed(self, dt):
     #     self.speed += 10
 
-    def _init_platforms(self, dt):
-        platformxspace = Window.width * 2
-        numplats = 0
-        while platformxspace > 0:
-            platform = self._create_platform()
-            self.platforms.append(platform)
-            platformxspace -= platform.size[0]
-            numplats += 1         
-
-    def _create_platform(self):
-        if self.initial_platforms < 2:
-            platform = Platform()
-            platform.y = 0
-            platform.x = self.current_platform_x
-            platform.spacing = 0
-            platform.texture = self.listofelements[2]
-            texture = Image(source = self.listofelements[2])
-            platform.size = texture.texture_size
-            self.current_platform_x += platform.size[0] + platform.spacing
-            self.initial_platforms += 1
-            print 'initial platform', self.initial_platforms
-            return platform
-        
+    def _init_platform(self, line_num, last_height, *largs):
+        if random.random() < self.lines[line_num]['platform_type_ratio']:
+            start_height = 1 if last_height is None else int(last_height / self.tile_size[1]) + random.randint(-1,1)
+            if start_height < 1: start_height = 1
+            if start_height > self.lines[line_num]['max_height']: start_height = self.lines[line_num]['max_height']
+            self.platforms.append(self._create_scaffold(line_num, start_height = start_height, max_height = self.lines[line_num]['max_height'], max_length = self.lines[line_num]['max_length']))
         else:
-            max_jump_distance = ((3*self.game.player_character.jump_velocity)/self.game.player_character.gravity)*self.speed
-            platform = Platform()
-            randPlatform = random.randint(0, 2)
-            platform.spacing = random.randint(0, max_jump_distance)
-            platform.y = 0
-            platform.x = self.current_platform_x + platform.spacing
-            print 'created platform at: ', platform.x
-            platform.texture = self.listofelements[randPlatform]
-            texture = Image(source = self.listofelements[randPlatform])
-            platform.size = texture.texture_size
-            self.current_platform_x += platform.size[0] + platform.spacing
-            print platform.size[0]
+            self.platforms.append(self._create_floating_platform(line_num, last_height = last_height))
 
-            # platform.confined_enemy = random.randint(0,4)
-            # if platform.confined_enemy == 3:
-            if platform.size[0] > 200:
-                platform.enemy = self.parent.parent.confined_enemy._create_enemy(plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x, plat_size = platform.size[0])
-                print 'created enemy'
-            if platform.size[0] < 200:
-                platform.coin = self.parent.parent.coin._create_coin(plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x, plat_size = platform.size[0])
-            return platform
+    def _get_tile_name(self, prefix, position, corner=True):
+        # position is 1-9 arranged like your numpad
+        if corner:
+            return prefix + ['cplat-left-3', None, 'cplat-right-3',
+                    'cplat-left-2', 'fblock-1', 'cplat-right-2',
+                    'cplat-left-1', 'mplatnopost-1', 'cplat-right-1'][position-1] + '.png'
+        else:
+            return prefix + ['mplatwithpost-right-3', None, 'mplatwithpost-left-3',
+                    'mplatwithpost-right-2', 'fblock-1', 'mplatwithpost-left-2',
+                    'mplatwithpost-right-1', 'mplatnopost-1', 'mplatwithpost-left-1'][position-1] + '.png'
+
+    def _create_scaffold(self, line, start_height = 1, max_height = 3, max_length = 5):
+        prefix = 'media/art/platforms/scaffolding-'
+        
+        # first create list of heights so we know what to build
+        h = start_height
+        heights = []
+        for x in range(int(max_length*random.random())+1):
+            heights.append(h)
+            r = random.random()
+            if r > .75 and h + 1 <= max_height:
+                # build an additional level in next column
+                h += 1
+            elif r < .25 and h - 1 >= 1:
+                # go down a level
+                h -= 1
+            else:
+                # stay at the same level
+                pass
+
+        # now actually build the scaffolding
+        tile_dict = {}
+        for col_idx, h in enumerate(heights):
+            #build a "bridge" if we are connecting two scaffolds of the same height
+            if (col_idx != 0) and (col_idx != len(heights) - 1) and h == heights[col_idx-1] == heights[col_idx+1]:
+                tile_dict[(2*col_idx, 3*h-1)] = tile_dict[(2*col_idx + 1, 3*h-1)] = self._get_tile_name(prefix, 8)
+                continue
+            for r in (0,1):
+                for c in range(3*h):
+                    t = (r + 2*col_idx, c)
+
+                    corner = False
+                    if r == 0:
+                        if col_idx == 0:
+                            corner = True
+
+                        if c % 3 == 0:
+                            position = 1
+                        elif c % 3 == 1:
+                            position = 4
+                        elif c % 3 == 2:
+                            position = 7
+                    elif r == 1:
+                        if col_idx == len(heights) - 1:
+                            corner = True
+
+                        if c % 3 == 0:
+                            position = 3
+                        elif c % 3 == 1:
+                            position = 6
+                        elif c % 3 == 2:
+                            position = 9
+                    tile_dict[t] = self._get_tile_name(prefix, position, corner = corner)
+
+        platform = Platform(tile_dict, tiles_per_level = 3, platform_type = 'scaffold')
+        platform.x = Window.size[0]
+        platform.y = 0
+        platform.end_height = platform.y + heights[-1] * platform.tile_size[1]
+        platform.line = line
+        return platform
+
+    def _signal_platform_on_screen(self, platform):
+        print "PLATFORM COMPLETE"
+        interval = random.triangular(self.lines[platform.line]['min_distance'], self.lines[platform.line]['max_distance'],
+                    self.lines[platform.line]['min_distance'] + self.lines[platform.line]['difficulty']*(self.lines[platform.line]['max_distance']
+                     - self.lines[platform.line]['min_distance'])) / self.speed
+
+        Clock.schedule_once(functools.partial(self._init_platform, platform.line, platform.end_height), interval)
+
+    def _create_floating_platform(self, line, last_height = None):
+            if self.initial_platforms < 2:
+                src = {(0,0): 'media/art/platforms/platform1.png'}
+                texture_size = CoreImage(src[(0,0)]).texture.size
+                platform = Platform(src, tile_size = texture_size, platform_type = 'floating')
+                platform.x = self.current_platform_x
+                self.current_platform_x += platform.size[0]
+                self.initial_platforms += 1
+                platform.y = -texture_size[1]*0.5
+                platform.end_height = platform.y + texture_size[1]
+                platform.line = line
+                return platform
+            else:
+                # max_jump_distance = ((3*self.game.player_character.jump_velocity)/self.game.player_character.gravity)*self.speed
+                src = random.choice([{(0,0): 'media/art/platforms/platform1.png'},
+                    {(0,0): 'media/art/platforms/platform2.png'},
+                    {(0,0): 'media/art/platforms/platform3.png'}])
+                texture_size = CoreImage(src[(0,0)]).texture.size
+                platform = Platform(src, tile_size = texture_size, platform_type = 'floating')
+                platform.x = Window.size[0]
+                if last_height is None:
+                    platform.y = -texture_size[1]*0.5
+                else:
+                    y = last_height - texture_size[1] + random.randint(-self.lines[line]['platform_max_y_change'], self.lines[line]['platform_max_y_change'])
+                    if y < -texture_size[1]*0.5: y = -texture_size[1]*0.5
+                    if y > Window.size[1] - texture_size[1] - 150: y = Window.size[1] - texture_size[1] - 150
+                    platform.y = y
+                platform.end_height = platform.y + texture_size[1]
+                platform.line = line
+                if platform.size[0] > 200:
+                    platform.enemy = self.parent.parent.confined_enemy._create_enemy(plat_y = platform.y + platform.size[1]*1.75, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
+                if platform.size[0] < 200:
+                    platform.coin = self.parent.parent.coin._create_coin(plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x  + platform.size[0]*.5, plat_size = platform.size[0])
+                return platform
 
     def _update(self, dt):
         self._advance_time(dt)
@@ -531,26 +686,34 @@ class ScrollingForeground(Widget):
         for platform in self.platforms:
             platform.x -= self.speed * dt
             if platform.x < -platform.size[0]:
-                self.current_platform_x -= platform.size[0] + platform.spacing
                 self.platforms.pop(self.platforms.index(platform))
-                platform = self._create_platform()
-                self.platforms.append(platform)
+            elif platform.is_partially_off_screen and platform.x + platform.size[0] < Window.size[0]:
+                self._signal_platform_on_screen(platform)
+                platform.is_partially_off_screen = False
 
     def _render(self):
-        for platform in self.platforms:
-            if platform not in self.platforms_dict:
-                self.platforms_dict[platform] = dict()
-                with self.canvas:
-                    PushMatrix()
-                    self.platforms_dict[platform]['translate'] = Translate()
-                    self.platforms_dict[platform]['Quad'] = Quad(source=platform.texture, points=(-platform.size[0] * 0.5, -platform.size[1] * 0.5,
-                        platform.size[0] * 0.5, -platform.size[1] * 0.5, platform.size[0] * 0.5, platform.size[1] * 0.5,
-                        -platform.size[0] * 0.5, platform.size[1] * 0.5))
-                    self.platforms_dict[platform]['translate'].xy = (platform.x, platform.y)
-                    PopMatrix()
+        for line_num in range(len(self.lines)):
+            for platform in self.platforms:
+                if platform.line != line_num: continue
+                if platform not in self.platforms_dict:
+                    xs = platform.tile_size[0]
+                    ys = platform.tile_size[1]
+                    self.platforms_dict[platform] = dict()
+                    with self.canvas:
+                        PushMatrix()
+                        self.platforms_dict[platform]['translate'] = Translate()
+                        for t in platform.textures.keys():
+                            self.platforms_dict[platform]['Quad'] = Quad(points=(xs * t[0], ys * t[1],
+                                        xs * t[0] + xs, ys * t[1],
+                                        xs * t[0] + xs, ys * t[1] + ys,
+                                        xs * t[0], ys * t[1] + ys,),
+                                    texture=platform.textures[t])
 
-            else:
-                self.platforms_dict[platform]['translate'].xy = (platform.x, platform.y)
+                        self.platforms_dict[platform]['translate'].xy = (platform.x, platform.y)
+                        PopMatrix()
+
+                else:
+                    self.platforms_dict[platform]['translate'].xy = (platform.x, platform.y)
 
 class ParticleEffects(Widget):
     landing_dust = ObjectProperty(ParticleSystem)
