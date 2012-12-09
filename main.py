@@ -326,7 +326,7 @@ class ConfinedEnemy(Widget):
         # Clock.schedule_once(self._init_enemies)
         # Clock.schedule_once(self._update, timeout=2)
 
-    def _create_enemy(self, plat_y, plat_x, plat_size):
+    def create_enemy(self, plat_y, plat_x, plat_size):
         enemy = Enemy()
         print 'created enemy at: ', enemy.x
         enemy.texture = 'media/art/characters/testcharacter.png'
@@ -410,7 +410,7 @@ class Coin(Widget):
         self.coins = list()
         self.coins_dict = dict()
 
-    def _create_coin(self, plat_y, plat_x, plat_size):
+    def create_coin(self, plat_y, plat_x, plat_size):
         coin = ScoringObject()
         coin.texture = 'media/art/collectibles/goldcoin1.png'
         texture = Image(source = 'media/art/collectibles/goldcoin1.png')
@@ -639,39 +639,39 @@ class ScrollingForeground(Widget):
         Clock.schedule_once(functools.partial(self._init_platform, platform.line, platform.end_height), interval)
 
     def _create_floating_platform(self, line, last_height = None):
-            if self.initial_platforms < 2:
-                src = {(0,0): 'media/art/platforms/platform1.png'}
-                texture_size = CoreImage(src[(0,0)]).texture.size
-                platform = Platform(src, tile_size = texture_size, platform_type = 'floating')
-                platform.x = self.current_platform_x
-                self.current_platform_x += platform.size[0]
-                self.initial_platforms += 1
+        if self.initial_platforms < 2:
+            src = {(0,0): 'media/art/platforms/platform1.png'}
+            texture_size = CoreImage(src[(0,0)]).texture.size
+            platform = Platform(src, tile_size = texture_size, platform_type = 'floating')
+            platform.x = self.current_platform_x
+            self.current_platform_x += platform.size[0]
+            self.initial_platforms += 1
+            platform.y = -texture_size[1]*0.5
+            platform.end_height = platform.y + texture_size[1]
+            platform.line = line
+            return platform
+        else:
+            # max_jump_distance = ((3*self.game.player_character.jump_velocity)/self.game.player_character.gravity)*self.speed
+            src = random.choice([{(0,0): 'media/art/platforms/platform1.png'},
+                {(0,0): 'media/art/platforms/platform2.png'},
+                {(0,0): 'media/art/platforms/platform3.png'}])
+            texture_size = CoreImage(src[(0,0)]).texture.size
+            platform = Platform(src, tile_size = texture_size, platform_type = 'floating')
+            platform.x = Window.size[0]
+            if last_height is None:
                 platform.y = -texture_size[1]*0.5
-                platform.end_height = platform.y + texture_size[1]
-                platform.line = line
-                return platform
             else:
-                # max_jump_distance = ((3*self.game.player_character.jump_velocity)/self.game.player_character.gravity)*self.speed
-                src = random.choice([{(0,0): 'media/art/platforms/platform1.png'},
-                    {(0,0): 'media/art/platforms/platform2.png'},
-                    {(0,0): 'media/art/platforms/platform3.png'}])
-                texture_size = CoreImage(src[(0,0)]).texture.size
-                platform = Platform(src, tile_size = texture_size, platform_type = 'floating')
-                platform.x = Window.size[0]
-                if last_height is None:
-                    platform.y = -texture_size[1]*0.5
-                else:
-                    y = last_height - texture_size[1] + random.randint(-self.lines[line]['platform_max_y_change'], self.lines[line]['platform_max_y_change'])
-                    if y < -texture_size[1]*0.5: y = -texture_size[1]*0.5
-                    if y > Window.size[1] - texture_size[1] - 150: y = Window.size[1] - texture_size[1] - 150
-                    platform.y = y
-                platform.end_height = platform.y + texture_size[1]
-                platform.line = line
-                if platform.size[0] > 200:
-                    platform.enemy = self.parent.parent.confined_enemy._create_enemy(plat_y = platform.y + platform.size[1]*1.75, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
-                if platform.size[0] < 200:
-                    platform.coin = self.parent.parent.coin._create_coin(plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x  + platform.size[0]*.5, plat_size = platform.size[0])
-                return platform
+                y = last_height - texture_size[1] + random.randint(-self.lines[line]['platform_max_y_change'], self.lines[line]['platform_max_y_change'])
+                if y < -texture_size[1]*0.5: y = -texture_size[1]*0.5
+                if y > Window.size[1] - texture_size[1] - 150: y = Window.size[1] - texture_size[1] - 150
+                platform.y = y
+            platform.end_height = platform.y + texture_size[1]
+            platform.line = line
+            if platform.size[0] > 200:
+                platform.enemy = self.parent.parent.confined_enemy.create_enemy(plat_y = platform.y + platform.size[1]*1.75, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
+            if platform.size[0] < 200:
+                platform.coin = self.parent.parent.coin.create_coin(plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x  + platform.size[0]*.5, plat_size = platform.size[0])
+            return platform
 
     def _update(self, dt):
         self._advance_time(dt)
