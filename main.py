@@ -143,18 +143,6 @@ class AnimationController(Widget):
         if anim_name+"_start" in dir(self):
             getattr(self, anim_name+"_start")()
 
-    def jump1_start(self):
-        print "started jumping!"
-
-    def jump1_stop(self):
-        print "stopped jumping!"
-
-    def walk_start(self):
-        print "started walking!"
-
-    def walk_stop(self):
-        print "stopped walking!"
-
 class PlayerCharacter(Widget):
     isRendered = BooleanProperty(False)
     y_velocity = NumericProperty(0)
@@ -222,6 +210,7 @@ class PlayerCharacter(Widget):
             if self.jump_num == 0: return
             anim = Animation(global_speed = 0, duration = .2)
             anim.start(self.game)
+            self.is_jumping = False
             self.is_dropping = True
             self.y_velocity = self.drop_velocity
         elif move_name == 'drop-land':
