@@ -153,7 +153,7 @@ class PlayerCharacter(Widget):
     jump_velocity = NumericProperty(250)
     is_jumping = BooleanProperty(False)
 
-    drop_velocity = NumericProperty(-400)
+    drop_velocity = NumericProperty(-500)
     is_dropping = BooleanProperty(False)
 
     gravity = NumericProperty(300)
@@ -260,6 +260,7 @@ class PlayerCharacter(Widget):
 
         # player is in the air and not actively jumping
         if not is_on_ground:
+            if not self.is_jumping: self.exec_move('jump2')
             self.y_velocity -= self.gravity * dt
 
         self.oy = self.y
