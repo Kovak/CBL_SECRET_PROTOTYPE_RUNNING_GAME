@@ -55,18 +55,15 @@ class RunningGame(Screen):
         self.add_widget(self.player_character)
         self.add_widget(self.landing_fx)
 
-    # def on_touch_down(self, touch):
-    #     pass
 
     def on_touch_up(self, touch):
         if 'swipe' not in touch.ud:
             # touch is not a swipe, for now lets make this mean junp
-            self.player_character.isJumping = True
+            self.player_character.exec_move("jump1")
         else:
             if touch.ud['swipe'] == 'up':
-                self.player_character.isJumping = True
+                self.player_character.exec_move("jump1")
             elif touch.ud['swipe'] == 'right':
-                # self.landing_fx.fire_forward(.1)
                 self.player_character.sword_dash = True
                 self.player_character.offensive_move = True
             elif touch.ud['swipe'] == 'down':
@@ -92,7 +89,7 @@ class AnimationController(Widget):
     active_animation = StringProperty(None)
     active_texture_index = 0
     
-    def __init__(self, char_name, initial_state):
+    def __init__(self, char_name, initial_state, game=None):
         super(AnimationController, self).__init__()
         self._read_animations_from_file(char_name)
         self.active_animation = initial_state
@@ -129,19 +126,39 @@ class AnimationController(Widget):
         self.textures = self.animations[value]
 
     def set_animation(self, anim_name):
-        if anim_name == 'walk':
-            self.set_walking()
+        # if custom code exists to run when the current animation stops, run it.
+        if self.active_animation+"_stop" in dir(self):
+            getattr(self, self.active_animation+"_stop")()
+        
+        self.active_animation = anim_name
+        
+        # if custom code exists to run when the new animation starts, run it.
+        if anim_name+"_start" in dir(self):
+            getattr(self, anim_name+"_start")()
+
+    def jump1_start(self):
+        print "started jumping!"
+
+    def jump1_stop(self):
+        print "stopped jumping!"
+
+    def walk_start(self):
+        print "started walking!"
+
+    def walk_stop(self):
+        print "stopped walking!"
 
 class PlayerCharacter(Widget):
     isRendered = BooleanProperty(False)
-    isOnGround = BooleanProperty(False)
     y_velocity = NumericProperty(0)
-    isJumping = BooleanProperty(False)
-    isMidJump = BooleanProperty(False)
-    numJumps = NumericProperty(2)
-    anim_frame_counter = NumericProperty(0)
-    gravity = NumericProperty(300)
+    oyv = 0
+
+    jump_num = NumericProperty(0)
+    max_jumps = NumericProperty(2)
     jump_velocity = NumericProperty(250)
+    is_jumping = BooleanProperty(False)
+
+    gravity = NumericProperty(300)
     down_dash = BooleanProperty(False)
     down_dash_active = BooleanProperty(False)
     down_dash_landed = BooleanProperty(False)
@@ -171,7 +188,7 @@ class PlayerCharacter(Widget):
         Clock.schedule_once(self._update)
 
     def _check_collision(self):
-        if self.isMidJump: return False
+        if self.is_jumping: return False
         for each in self.game.foreground.platforms:
             if (self.center_x >= each.x) and (self.center_x <= each.x + each.size[0]):
                 tile_idx = int((self.center_x - each.x)/each.tile_size[0])
@@ -182,16 +199,26 @@ class PlayerCharacter(Widget):
                         return True
         return False
 
-    def _set_jumping(self, dt):
-        self.isMidJump = False
 
-    def update_anim_frame_counter(self, dt):
-        if self.anim_frame_counter <= 3:
-            self.anim_frame_counter += 1
-        if self.anim_frame_counter > 3:
-            self.anim_frame_counter = 0
-        Clock.schedule_once(self.update_anim_frame_counter, .20)
+    def exec_move(self, move_name):
         
+        if move_name == 'jump1':
+            if self.jump_num >= self.max_jumps: return
+            self.jump_num += 1
+            self.is_jumping = True
+            # Clock.schedule_once(self.un_jump, .25)
+            self.y_velocity += self.jump_velocity
+
+        self.animation_controller.set_animation(move_name)
+
+    def on_y_velocity(self, instance, value):
+        # if character is not jumping, we don't care about y_velocity
+        if self.jump_num == 0: return
+        # but if velocity used to be positive and now it's negative, execute the jump2 move
+        if self.oyv > 0 and value <= 0:
+            self.is_jumping = False
+            self.exec_move('jump2')
+        self.oyv = value
 
     def die(self):
         self.y = Window.height *.5
@@ -205,27 +232,16 @@ class PlayerCharacter(Widget):
             self.parent.parent.manager.current = 'replay'
 
     def _advance_time(self, dt):
-        landed = False
-        gravity = self.gravity
         is_on_ground = self._check_collision()
-        # and then set y to the platform height
-        if is_on_ground and not self.isMidJump:
-            self.y_velocity = 0
-            self.numJumps = 2
 
-        if self.isJumping:
-            if self.numJumps > 0:
-                print 'jumping', self.numJumps
-                is_on_ground = False
-                self.y_velocity += self.jump_velocity
-                self.isMidJump = True
-                self.numJumps -= 1
-            self.isJumping = False
-            Clock.schedule_once(self._set_jumping, .25)
-            self.game.landing_fx.emit_dust(.1)
-            
+        # and then set y to the platform height
+        if is_on_ground and self.y_velocity < 0:
+            self.y_velocity = 0
+            self.jump_num = 0
+            self.is_jumping = False
+            self.exec_move('walk')
         if not is_on_ground:
-            self.y_velocity -= gravity * dt
+            self.y_velocity -= self.gravity * dt
 
         self.oy = self.y
         self.ox = self.x
