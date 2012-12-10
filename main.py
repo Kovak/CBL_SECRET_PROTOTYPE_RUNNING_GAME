@@ -2,6 +2,7 @@ import kivy
 from kivy.app import App
 from kivy.base import EventLoop
 from kivy.factory import Factory
+from kivy.animation import Animation
 from kivy.uix.widget import Widget
 from kivy.graphics.texture import Texture
 from kivy.core.window import Window
@@ -31,6 +32,7 @@ class DebugPanel(Widget):
 
 class RunningGame(Screen):
     foreground = ObjectProperty(None)
+    global_speed = NumericProperty(1)
 
     def __init__(self, **kwargs):
         super(RunningGame, self).__init__(**kwargs)
@@ -67,7 +69,7 @@ class RunningGame(Screen):
                 self.player_character.sword_dash = True
                 self.player_character.offensive_move = True
             elif touch.ud['swipe'] == 'down':
-                self.player_character.down_dash = True
+                self.player_character.exec_move("drop")
                 self.player_character.offensive_move = True
 
     def on_touch_move(self, touch):
@@ -79,6 +81,10 @@ class RunningGame(Screen):
             touch.ud['swipe'] = 'right'
         elif touch.x < touch.ox and abs(touch.x - touch.ox) > 20 and abs(touch.x - touch.ox) > abs(touch.y - touch.oy):
             touch.ud['swipe'] = 'left'
+
+    def on_global_speed(self, instance, value):
+        for obj in [self.foreground, self.midground, self.background]:
+            obj.speed_multiplier = value
 
     def add_confined_enemy(enemy):
         self.add_widget(enemy)
@@ -113,6 +119,7 @@ class AnimationController(Widget):
                     txtr = CoreImage(os.path.join(self.char_directory, char_name, t[0])).texture
                     attrs.append((txtr, txtr.size, float(t[1])))
             if anim_name is not None: self.animations[anim_name] = attrs
+        print self.animations
 
     def _next_frame(self,dt):
         self.active_texture_index = self.active_texture_index + 1 if self.active_texture_index < len(self.textures) - 1 else 0
@@ -123,13 +130,13 @@ class AnimationController(Widget):
         return self.textures[self.active_texture_index][0:2]
 
     def on_active_animation(self,instance,value):
+        self.active_texture_index = 0
         self.textures = self.animations[value]
 
     def set_animation(self, anim_name):
         # if custom code exists to run when the current animation stops, run it.
         if self.active_animation+"_stop" in dir(self):
             getattr(self, self.active_animation+"_stop")()
-        
         self.active_animation = anim_name
         
         # if custom code exists to run when the new animation starts, run it.
@@ -157,6 +164,9 @@ class PlayerCharacter(Widget):
     max_jumps = NumericProperty(2)
     jump_velocity = NumericProperty(250)
     is_jumping = BooleanProperty(False)
+
+    drop_velocity = NumericProperty(-400)
+    is_dropping = BooleanProperty(False)
 
     gravity = NumericProperty(300)
     down_dash = BooleanProperty(False)
@@ -200,19 +210,33 @@ class PlayerCharacter(Widget):
         return False
 
 
-    def exec_move(self, move_name):
-        
+    def exec_move(self, move_name, *largs):
+        # move-specific code that is NOT animation related goes here (for example, physics)
         if move_name == 'jump1':
             if self.jump_num >= self.max_jumps: return
             self.jump_num += 1
             self.is_jumping = True
-            # Clock.schedule_once(self.un_jump, .25)
             self.y_velocity += self.jump_velocity
+        elif move_name == 'drop':
+            # you can only drop from a jump
+            if self.jump_num == 0: return
+            anim = Animation(global_speed = 0, duration = .2)
+            anim.start(self.game)
+            self.is_dropping = True
+            self.y_velocity = self.drop_velocity
+        elif move_name == 'drop-land':
+            # get the game clock running back at normal speed again
+            anim = Animation(global_speed = 1, duration = .5)
+            anim.start(self.game)
+            self.is_dropping = False
+            Clock.schedule_once(functools.partial(self.exec_move, 'walk'), .3)
+
 
         self.animation_controller.set_animation(move_name)
 
     def on_y_velocity(self, instance, value):
-        # if character is not jumping, we don't care about y_velocity
+        # watches for the point where player hits the apex of his parabola so that we can change animations
+        # if character is not jumping, we don't care about y_velocity and who likes running extra python code? not my crappy tablet!
         if self.jump_num == 0: return
         # but if velocity used to be positive and now it's negative, execute the jump2 move
         if self.oyv > 0 and value <= 0:
@@ -223,6 +247,7 @@ class PlayerCharacter(Widget):
     def die(self):
         self.y = Window.height *.5
         self.y_velocity = 0
+        self.game.global_speed = 1
         # self.down_dash_active = False
 
         if self.parent.parent.life_count.lives > 0:
@@ -234,12 +259,17 @@ class PlayerCharacter(Widget):
     def _advance_time(self, dt):
         is_on_ground = self._check_collision()
 
-        # and then set y to the platform height
+        # player was falling down and landed:
         if is_on_ground and self.y_velocity < 0:
             self.y_velocity = 0
             self.jump_num = 0
             self.is_jumping = False
-            self.exec_move('walk')
+            if self.is_dropping:
+                self.exec_move('drop-land')
+            else:
+                self.exec_move('walk')
+
+        # player is in the air and not actively jumping
         if not is_on_ground:
             self.y_velocity -= self.gravity * dt
 
@@ -478,6 +508,7 @@ class Platform(object):
 
 class ScrollingForeground(Widget):
     speed = NumericProperty(200)
+    speed_multiplier = NumericProperty(1)
     initial_platforms = NumericProperty(0)
     current_platform_x = NumericProperty(0)
     
@@ -535,11 +566,7 @@ class ScrollingForeground(Widget):
         Clock.schedule_once(functools.partial(self._init_platform, 0, None))
         Clock.schedule_once(functools.partial(self._init_platform, 1, None))
         Clock.schedule_once(self._update)
-        #Clock.schedule_interval(self._increase_platform_speed, 1.0)
 
-
-    # def _increase_platform_speed(self, dt):
-    #     self.speed += 10
 
     def _init_platform(self, line_num, last_height, *largs):
         if random.random() < self.lines[line_num]['platform_type_ratio']:
@@ -625,7 +652,7 @@ class ScrollingForeground(Widget):
         print "PLATFORM COMPLETE"
         interval = random.triangular(self.lines[platform.line]['min_distance'], self.lines[platform.line]['max_distance'],
                     self.lines[platform.line]['min_distance'] + self.lines[platform.line]['difficulty']*(self.lines[platform.line]['max_distance']
-                     - self.lines[platform.line]['min_distance'])) / self.speed
+                     - self.lines[platform.line]['min_distance'])) / (self.speed * self.speed_multiplier)
 
         Clock.schedule_once(functools.partial(self._init_platform, platform.line, platform.end_height), interval)
 
@@ -642,7 +669,6 @@ class ScrollingForeground(Widget):
             platform.line = line
             return platform
         else:
-            # max_jump_distance = ((3*self.game.player_character.jump_velocity)/self.game.player_character.gravity)*self.speed
             src = random.choice([{(0,0): 'media/art/platforms/platform1.png'},
                 {(0,0): 'media/art/platforms/platform2.png'},
                 {(0,0): 'media/art/platforms/platform3.png'}])
@@ -675,7 +701,7 @@ class ScrollingForeground(Widget):
 
     def _advance_time(self, dt):
         for platform in self.platforms:
-            platform.x -= self.speed * dt
+            platform.x -= (self.speed * self.speed_multiplier) * dt
             if platform.x < -platform.size[0]:
                 self.platforms.pop(self.platforms.index(platform))
             elif platform.is_partially_off_screen and platform.x + platform.size[0] < Window.size[0]:
@@ -735,13 +761,12 @@ class ScrollImage(object):
 
 class ScrollingMidground(Widget):
     current_midground_x = NumericProperty(0)
+    speed_multiplier = NumericProperty(1)
 
     def __init__(self, **kwargs):
         super(ScrollingMidground, self).__init__(**kwargs)
         self.midelements = list()
         self.midelements.append('media/art/midground_objects/testarch.png')
-        # self.midelements.append('media/art/midground_objects/testground1.png')
-        # self.midelements.append('media/art/midground_objects/testground2.png')
         self.midelements.append('media/art/midground_objects/testhill.png')
         self.midelements.append('media/art/midground_objects/testhill2.png')
         self.midelements.append('media/art/midground_objects/testhouse.png')
@@ -794,8 +819,7 @@ class ScrollingMidground(Widget):
 
     def _advance_time(self, dt):
         for midground in self.midgrounds:
-            midground.x -= midground.speed * dt
-            # print midground.speed
+            midground.x -= midground.speed * self.speed_multiplier * dt
             if midground.x < -midground.size[0]:
                 self.current_midground_x -= midground.size[0] + midground.spacing
                 self.midgrounds.pop(self.midgrounds.index(midground))
@@ -804,6 +828,7 @@ class ScrollingMidground(Widget):
 
 class ScrollingBackground(Widget):
     speed = NumericProperty(50)
+    speed_multiplier = NumericProperty(1)
     current_background_x = NumericProperty(0)
 
     def __init__(self, **kwargs):
@@ -864,7 +889,7 @@ class ScrollingBackground(Widget):
 
     def _advance_time(self, dt):
         for background in self.backgrounds:
-            background.x -= self.speed * dt
+            background.x -= self.speed * self.speed_multiplier * dt
             if background.x < -background.size[0]:
                 self.current_background_x -= background.size[0] + background.spacing
                 self.backgrounds.pop(self.backgrounds.index(background))
