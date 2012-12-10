@@ -9,14 +9,15 @@ from kivy.uix.image import Image
 from kivy.core.image import Image as CoreImage
 from kivy.uix.button import Button
 from kivy.clock import Clock
-import functools
-import random
 from kivy.graphics import Rectangle, Color, Callback, Rotate, PushMatrix, PopMatrix, Translate, Quad
 from kivy.properties import NumericProperty, StringProperty, ObjectProperty, BooleanProperty
 from kivy.lang import Builder
 from kivyparticle.engine import *
 from kivy.input.motionevent import MotionEvent
 from kivy.uix.screenmanager import ScreenManager, Screen, FadeTransition
+import functools
+import random
+import os
 
 def random_variance(base, variance):
     return base + variance * (random.random() * 2.0 - 1.0)
@@ -85,9 +86,53 @@ class RunningGame(Screen):
     def add_confined_enemy(enemy):
         self.add_widget(enemy)
 
+class AnimationController(Widget):
+
+    char_directory = 'media/art/characters/'
+    active_animation = StringProperty(None)
+    active_texture_index = 0
+    
+    def __init__(self, char_name, initial_state):
+        super(AnimationController, self).__init__()
+        self._read_animations_from_file(char_name)
+        self.active_animation = initial_state
+        Clock.schedule_once(self._next_frame)
+
+    def _read_animations_from_file(self, char_name):
+        # parse animations.txt file
+        search_dir = os.path.join(self.char_directory, char_name)
+        self.animations = {}
+        anim_name = None
+        with open(os.path.join(search_dir, 'animations.txt'), 'r') as anim_file:
+            for line in anim_file:
+                if line.strip() == "": continue
+                if line[0] not in [" ", "\t"]:
+                    # unindented lines are animations like "walk:" or "jump:"
+                    if anim_name is not None: self.animations[anim_name] = attrs
+                    anim_name = line.strip(" :\n\t")
+                    attrs = []
+                else:
+                    t = [x.strip() for x in line.split(":")]
+                    txtr = CoreImage(os.path.join(self.char_directory, char_name, t[0])).texture
+                    attrs.append((txtr, txtr.size, float(t[1])))
+            if anim_name is not None: self.animations[anim_name] = attrs
+
+    def _next_frame(self,dt):
+        self.active_texture_index = self.active_texture_index + 1 if self.active_texture_index < len(self.textures) - 1 else 0
+        Clock.schedule_once(self._next_frame, self.textures[self.active_texture_index][2])
+
+    def get_frame(self):
+        # returns a tuple containing the active texture and the (x,y) size of the texture
+        return self.textures[self.active_texture_index][0:2]
+
+    def on_active_animation(self,instance,value):
+        self.textures = self.animations[value]
+
+    def set_animation(self, anim_name):
+        if anim_name == 'walk':
+            self.set_walking()
 
 class PlayerCharacter(Widget):
-    texture = StringProperty(None)
     isRendered = BooleanProperty(False)
     isOnGround = BooleanProperty(False)
     y_velocity = NumericProperty(0)
@@ -111,14 +156,13 @@ class PlayerCharacter(Widget):
 
     def __init__(self, **kwargs):
         super(PlayerCharacter, self).__init__(**kwargs)
-        self.texture = 'media/art/characters/char1-idle1.png'
         self.x = Window.width *.2
         self.y = Window.height * .2
         self.size = (82, 150)
         self.size_hint = (None, None)
         self.render_dict = dict()
+        self.animation_controller = AnimationController('char1', 'walk')
         Clock.schedule_once(self._update)
-        Clock.schedule_once(self.update_anim_frame_counter, .25)
 
 
     def _update(self, dt):
@@ -191,90 +235,21 @@ class PlayerCharacter(Widget):
             self.die()
 
         #Animation Code:
-
-        if self.y_velocity > 0:
-            if self.anim_frame_counter == 0 or self.anim_frame_counter == 2:
-                self.texture = 'media/art/characters/char1-jump1.png'
-                self.size = [82, 150]
-            if self.anim_frame_counter == 1 or self.anim_frame_counter == 3:
-                self.texture = 'media/art/characters/char1-jump1-2.png'
-                self.size = [82, 150]
-
-        if self.y_velocity < 0:
-            if self.down_dash == False:
-                if self.anim_frame_counter == 0 or self.anim_frame_counter == 2:
-                    self.texture = 'media/art/characters/char1-jump2.png'
-                    self.size = [82, 150]
-                if self.anim_frame_counter == 1 or self.anim_frame_counter == 3:
-                    self.texture = 'media/art/characters/char1-jump2-2.png'
-                    self.size = [82, 150]
-            if self.down_dash == True:
-                self.texture = 'media/art/characters/char1-downdash_fall.png'
-                self.size = [124, 148]
-                self.down_dash_active = True
-
-        if self.y_velocity == 0:
-            self.down_dash = False
-            if self.down_dash_active == True:
-                self.texture = 'media/art/characters/char1-downdash_land1.png'
-                self.size = [114, 150]
-                self.down_dash_counter += 1
-                if self.down_dash_counter > 5:
-                    self.down_dash_active = False
-                    self.down_dash_landed = True
-                    self.down_dash_counter = 0
-            if self.down_dash_landed == True:
-                self.texture = 'media/art/characters/char1-downdash_land2.png'
-                self.size = [130, 150]
-                self.down_dash_counter += 1
-                if self.down_dash_counter > 10:
-                    self.down_dash_landed = False
-                    self.down_dash_counter = 0
-                    self.offensive_move = False
-            if self.sword_dash == True:
-                self.texture = 'media/art/characters/char1-sworddash1.png'
-                self.size = [120, 150]
-                self.sword_dash_counter += 1
-                if self.sword_dash_counter > 5:
-                    self.texture = 'media/art/characters/char1-sworddash2.png'
-                    self.size = [120, 150]
-                if self.sword_dash_counter > 11:
-                    self.texture = 'media/art/characters/char1-sworddash3.png'
-                    self.size = [120, 150]
-                if self.sword_dash_counter > 16:
-                    self.texture = 'media/art/characters/char1-sworddash4.png'
-                    self.size = [120, 150]
-                if self.sword_dash_counter > 20:
-                    self.sword_dash_counter = 0
-                    self.sword_dash = False
-                    self.offensive_move = False
-            if self.down_dash_active == False and self.down_dash_landed == False and self.sword_dash == False:
-                if self.anim_frame_counter == 0:
-                    self.texture = 'media/art/characters/char1-idle1.png'
-                    self.size = [82, 150]
-                if self.anim_frame_counter == 1:
-                    self.texture = 'media/art/characters/char1-step1.png'
-                    self.size = [82, 150]
-                if self.anim_frame_counter == 2:
-                    self.texture = 'media/art/characters/char1-idle2.png'
-                    self.size = [82, 150]
-                if self.anim_frame_counter == 3:
-                    self.texture = 'media/art/characters/char1-step2.png' 
-                    self.size = [82, 150]      
+        self.texture, self.size = self.animation_controller.get_frame()
     
     def _render(self):
         if not self.isRendered:
             with self.canvas:
                 PushMatrix()
                 self.render_dict['translate'] = Translate()
-                self.render_dict['rect'] = Quad(source=self.texture, points=(0, 0, self.size[0], 0, self.size[0], self.size[1], 0, self.size[1], ))
+                self.render_dict['rect'] = Quad(texture=self.texture, points=(0, 0, self.size[0], 0, self.size[0], self.size[1], 0, self.size[1], ))
                 self.render_dict['translate'].xy = (self.x, self.y)
                 PopMatrix()
             self.isRendered = True
 
         else:
             self.render_dict['translate'].xy = (self.x, self.y)
-            self.render_dict['rect'].source = self.texture
+            self.render_dict['rect'].texture = self.texture
             self.render_dict['rect'].points = points=( 0, 0, self.size[0], 0, self.size[0], self.size[1], 0, self.size[1],)
 
 class ScoreDisplay(Widget):
