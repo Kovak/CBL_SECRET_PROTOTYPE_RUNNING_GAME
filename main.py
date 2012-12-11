@@ -157,14 +157,9 @@ class PlayerCharacter(Widget):
     is_dropping = BooleanProperty(False)
 
     gravity = NumericProperty(300)
-    down_dash = BooleanProperty(False)
-    down_dash_active = BooleanProperty(False)
-    down_dash_landed = BooleanProperty(False)
-    down_dash_counter = NumericProperty(0)
-    dash_landed = BooleanProperty(False)
-    dash_land_counter = NumericProperty(0)
-    sword_dash = BooleanProperty(False)
-    sword_dash_counter = NumericProperty(0)
+
+    is_dashing = False
+
     offensive_move = BooleanProperty(False)
 
     game = ObjectProperty(None)
