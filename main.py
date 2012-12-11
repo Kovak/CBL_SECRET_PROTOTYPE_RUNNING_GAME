@@ -581,7 +581,8 @@ class ScrollingForeground(Widget):
         if corner:
             return prefix + ['cplat-left-3', None, 'cplat-right-3',
                     'cplat-left-2', 'fblock-1', 'cplat-right-2',
-                    'cplat-left-1', 'mplatnopost-1', 'cplat-right-1'][position-1] + '.png'
+                    'cplat-left-1', 'mplatnopost-1', 'cplat-right-1', 
+                    'mplatwithpost-right-4', 'mplatwithpost-left-4'][position-1] + '.png'
         else:
             return prefix + ['mplatwithpost-right-3', None, 'mplatwithpost-left-3',
                     'mplatwithpost-right-2', 'fblock-1', 'mplatwithpost-left-2',
@@ -619,11 +620,25 @@ class ScrollingForeground(Widget):
 
         # now actually build the scaffolding
         tile_dict = {}
+        bridging = False
         for col_idx, h in enumerate(heights):
             #build a "bridge" if we are connecting two scaffolds of the same height
             if (col_idx != 0) and (col_idx != len(heights) - 1) and h == heights[col_idx-1] == heights[col_idx+1]:
                 tile_dict[(2*col_idx, h-1)] = tile_dict[(2*col_idx + 1, h-1)] = self._get_tile_name(prefix, 8)
+                if not bridging:
+                    tile_dict[(2*col_idx, h-1)] = self._get_tile_name(prefix, 7, corner = False)
+                    tile_dict[(2*col_idx, h-2)] = self._get_tile_name(prefix, 4, corner = False)
+                    for i in range(h-2):
+                        tile_dict[(2*col_idx, i)] = self._get_tile_name(prefix, 11, corner = True)
+                    bridging = True
                 continue
+            elif bridging:
+                # finish the bridge
+                tile_dict[(2*col_idx - 1, h-1)] = self._get_tile_name(prefix, 9, corner = False)
+                tile_dict[(2*col_idx - 1, h-2)] = self._get_tile_name(prefix, 6, corner = False)
+                for i in range(h-2):
+                    tile_dict[(2*col_idx - 1, i)] = self._get_tile_name(prefix, 10, corner = True)
+                bridging = False
             for r in (0,1):
                 for c in range(h):
                     t = (r + 2*col_idx, c)
@@ -632,7 +647,7 @@ class ScrollingForeground(Widget):
                         if col_idx == 0:    
                             corner = True
                         if col_idx > 0 and c >= heights[col_idx - 1]:
-                            tile_dict[(t[0]-1, t[1])] = self._get_tile_name(prefix, 3, corner = False)
+                            tile_dict[(t[0]-1, t[1])] = self._get_tile_name(prefix, 10, corner = True)
                         if c + 1 in walkable_levels + [h]:
                             position = 7
                         elif c + 2 in walkable_levels + [h]:
@@ -643,7 +658,7 @@ class ScrollingForeground(Widget):
                         if col_idx == len(heights) - 1:
                             corner = True
                         if col_idx < len(heights) - 1 and c >= heights[col_idx + 1]:
-                            tile_dict[(t[0]+1, t[1])] = self._get_tile_name(prefix, 1, corner = False)
+                            tile_dict[(t[0]+1, t[1])] = self._get_tile_name(prefix, 11, corner = True)
                         if c + 1 in walkable_levels + [h]:
                             position = 9
                         elif c + 2 in walkable_levels + [h]:
