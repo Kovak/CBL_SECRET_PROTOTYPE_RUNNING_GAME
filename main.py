@@ -335,10 +335,13 @@ class Enemy(object):
     x, y = -500, -500
     texture = None
     size = (0, 0)
+    active = False
+    outside_range = False
 
 class ConfinedEnemy(Widget):
     speed = NumericProperty(200)
     texture = StringProperty(None)
+    speed_multiplier = NumericProperty(1)
 
     def __init__(self, **kwargs):
         super(ConfinedEnemy, self).__init__(**kwargs)
@@ -349,15 +352,15 @@ class ConfinedEnemy(Widget):
 
     def create_enemy(self, plat_y, plat_x, plat_size):
         enemy = Enemy()
-        print 'created enemy at: ', enemy.x
         enemy.texture = 'media/art/characters/testcharacter.png'
         texture = Image(source = 'media/art/characters/testcharacter.png')
         enemy.size = texture.texture_size
         enemy.bbox = enemy.size
-        enemy.min = plat_x - plat_size / 2
-        enemy.max = plat_x + plat_size / 2
+        enemy.min = plat_x
+        enemy.max = plat_x + plat_size
         enemy.y = plat_y
         enemy.x = plat_x
+        print 'created enemy at: ', enemy.x
         enemy.test = True
         enemy.move_left = True
         enemy.move_right = False
@@ -368,30 +371,26 @@ class ConfinedEnemy(Widget):
         enemy.killed = False
         enemy.killed_player = False
         enemy.check_health = True
-        print 'enemy size',enemy.size
+        enemy.active = True
+        enemy.outside_range = False
         self.enemies.append(enemy)
+        return enemy
 
-    def _advance_time(self, dt):
-        for enemy in self.enemies:
-            enemy.min -= self.speed * dt
-            enemy.max -= self.speed * dt
-
-            if enemy.move_left == True:
-                enemy.x -= self.speed * dt * 1.5
-
-            if enemy.move_right == True:
-                enemy.x += self.speed * dt * .5
-            
-            if enemy.x < enemy.min:
-                enemy.move_right = True
-                enemy.move_left = False
-
-            if enemy.x > enemy.max:
-                enemy.move_left = True
-                enemy.move_right = False
-
-            if enemy.x < -100:
-                self.enemies.pop(self.enemies.index(enemy))
+    def animate_con_enemy(self, enemy, plat_x, scroll_multiplier):
+        if enemy.move_left == True:
+            enemy.x -= scroll_multiplier * 1.5
+        if enemy.move_right == True:
+            enemy.x += scroll_multiplier * .5
+        if enemy.x < enemy.min:
+            enemy.move_right = True
+            enemy.move_left = False
+        if enemy.x > enemy.max:
+            enemy.move_left = True
+            enemy.move_right = False
+        if enemy.x < -100:
+            enemy.outside_range = True
+            enemy.active = False
+        return enemy
 
     def _render(self):
         for enemy in self.enemies:
@@ -400,9 +399,9 @@ class ConfinedEnemy(Widget):
                 with self.canvas:
                     PushMatrix()
                     self.enemies_dict[enemy]['translate'] = Translate()
-                    self.enemies_dict[enemy]['Quad'] = Quad(source=enemy.texture, points=(-enemy.size[0] * 0.5, -enemy.size[1] * 0.5, 
-                        enemy.size[0] * 0.5,  -enemy.size[1] * 0.5, enemy.size[0] * 0.5,  enemy.size[1] * 0.5, 
-                        -enemy.size[0] * 0.5,  enemy.size[1] * 0.5))    
+                    self.enemies_dict[enemy]['Quad'] = Quad(source=enemy.texture, points=(-enemy.size[0] * 0.5, -enemy.size[1] * 0.5,
+                        enemy.size[0] * 0.5, -enemy.size[1] * 0.5, enemy.size[0] * 0.5, enemy.size[1] * 0.5,
+                        -enemy.size[0] * 0.5, enemy.size[1] * 0.5))
                     self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
                     PopMatrix()
             if self.parent.parent.player_character.collide_widget(enemy) == True and self.parent.parent.player_character.offensive_move == False and enemy.killed == False and abs(enemy.x - self.parent.parent.player_character.x) < 50 and abs(enemy.y - self.parent.parent.player_character.y) < 100 and enemy.killed_player == False:
@@ -413,14 +412,19 @@ class ConfinedEnemy(Widget):
                 enemy.check_health = False
                 self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
                 print 'enemy killed'
+            if enemy.outside_range == True:
+                self.enemies.pop(self.enemies.index(enemy))
+                print 'ENEMY REMOVED'
 
-            elif enemy.killed == False:           
+            elif enemy.killed == False:
                 self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
 
 class ScoringObject(object):
     x, y = -500, -500
     texture = None
     size = (0, 0)
+    active = False
+    outside_range = False
 
 class Coin(Widget):
     speed = NumericProperty(200)
@@ -445,15 +449,12 @@ class Coin(Widget):
         # coin.bottom = coin.y - coin.size[1] *.5
         coin.collected = False
         coin._check_collision = True
+        coin.active = True
+        coin.outside_range = False
 
         print 'coin size ', coin.size
         self.parent.parent.coin.coins.append(coin)
-
-    def _advance_time(self, dt):
-        for coin in self.coins:
-            coin.x -= self.speed * dt
-            if coin.x < -100:
-                self.coins.pop(self.coins.index(coin))
+        return coin
 
     def _render(self):
         for coin in self.coins:
@@ -473,7 +474,9 @@ class Coin(Widget):
                 coin._check_collision = False
                 self.coins_dict[coin]['translate'].xy = (-100, coin.y)
                 self.parent.parent.score.coin_collected()
-
+            if coin.x < -100:
+                self.coins.pop(self.coins.index(coin))
+                print 'COIN REMOVED'
 
             elif coin.collected == False:       
                 self.coins_dict[coin]['translate'].xy = (coin.x, coin.y)
@@ -508,9 +511,14 @@ class Platform(object):
             self.platform_heights.append(hs)
         print self.platform_heights
 
+        self.coin = ScoringObject()
+        self.confined_enemy = Enemy()
+
 class ScrollingForeground(Widget):
     speed = NumericProperty(200)
     speed_multiplier = NumericProperty(1)
+    # initial_platforms = NumericProperty(0)
+    # current_platform_x = NumericProperty(0)
     
     # size of tiles used for scaffolding
     tile_size = (64,64)
@@ -672,23 +680,39 @@ class ScrollingForeground(Widget):
         platform.end_height = platform.y + texture_size[1]
         platform.line = line
         if platform.size[0] > 200:
-            platform.enemy = self.parent.parent.confined_enemy.create_enemy(plat_y = platform.y + platform.size[1]*1.75, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
+            platform.confined_enemy = self.parent.parent.confined_enemy.create_enemy(plat_y = platform.y + platform.size[1]*1.75, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
         if platform.size[0] < 200:
-            platform.coin = self.parent.parent.coin.create_coin(plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x  + platform.size[0]*.5, plat_size = platform.size[0])
+            platform.coin = self.parent.parent.coin.create_coin(plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
         return platform
 
     def _update(self, dt):
         self._advance_time(dt)
         self._render()
-        self.parent.parent.confined_enemy._advance_time(dt)
         self.parent.parent.confined_enemy._render()
-        self.parent.parent.coin._advance_time(dt)
         self.parent.parent.coin._render()
         Clock.schedule_once(self._update)
 
     def _advance_time(self, dt):
         for platform in self.platforms:
-            platform.x -= (self.speed * self.speed_multiplier) * dt
+            scroll_multiplier = self.speed * self.speed_multiplier * dt
+            platform.x -= scroll_multiplier
+             # set coin x to correspond with its platform
+            if platform.coin.active == True:
+                if platform.coin.x < -100:
+                    platform.coin.outside_range = True
+                    platform.coin.active = False
+                else:
+                    platform.coin.x = platform.x + platform.size[0]*.5
+            # set confined enemy x to correspond with its platform
+            if platform.confined_enemy.active == True:
+                if platform.confined_enemy.x < -100:
+                    platform.confined_enemy.outside_range = True
+                    platform.confined_enemy.active = False
+                else:
+                    platform.confined_enemy.min = platform.x
+                    platform.confined_enemy.max = platform.x + platform.size[0]
+                    platform.confined_enemy = self.parent.parent.confined_enemy.animate_con_enemy(enemy=platform.confined_enemy, plat_x=platform.x, scroll_multiplier=scroll_multiplier)
+
             if platform.x < -platform.size[0]:
                 self.platforms.pop(self.platforms.index(platform))
             elif platform.is_partially_off_screen and platform.x + platform.size[0] < Window.size[0]:
