@@ -46,7 +46,7 @@ class RunningGame(Screen):
         self.life_count = LivesDisplay()
         self.score = ScoreDisplay()
         self.confined_enemy = ConfinedEnemy()
-        self.coin = Coin()
+        self.coin = WorldObject()
         self.add_widget(self.background)
         self.add_widget(self.midground)
         self.add_widget(self.foreground)
@@ -426,60 +426,62 @@ class ScoringObject(object):
     active = False
     outside_range = False
 
-class Coin(Widget):
+class WorldObject(Widget):
     speed = NumericProperty(200)
     texture = StringProperty(None)
 
     def __init__(self, **kwargs):
-        super(Coin, self).__init__(**kwargs)
-        self.coins = list()
-        self.coins_dict = dict()
+        super(WorldObject, self).__init__(**kwargs)
+        self.world_objects = list()
+        self.world_objects_dict = dict()
 
-    def create_coin(self, plat_y, plat_x, plat_size):
-        coin = ScoringObject()
-        coin.texture = 'media/art/collectibles/goldcoin1.png'
-        texture = Image(source = 'media/art/collectibles/goldcoin1.png')
-        coin.size = texture.texture_size
-        coin.bbox = coin.size
-        coin.y = plat_y
-        coin.x = plat_x
-        coin.right = coin.x + coin.size[0] * .5
-        # coin.left = coin.x - coin.size[0] * .5
-        coin.top = coin.y + coin.size[1] * .5
-        # coin.bottom = coin.y - coin.size[1] *.5
-        coin.collected = False
-        coin._check_collision = True
-        coin.active = True
-        coin.outside_range = False
+    def create_world_object(self, obj_type, plat_y, plat_x, plat_size):
+        world_object = ScoringObject()
+        world_object.y = plat_y
+        world_object.x = plat_x
+        world_object.collected = False
+        world_object._check_collision = True
+        world_object.active = True
+        world_object.outside_range = False
+        world_object.type = obj_type
 
-        print 'coin size ', coin.size
-        self.parent.parent.coin.coins.append(coin)
-        return coin
+        if obj_type == 'coin':
+            world_object.texture = 'media/art/collectibles/goldcoin1.png'
+            texture = Image(source = 'media/art/collectibles/goldcoin1.png')
+            world_object.size = texture.texture_size
+            world_object.right = world_object.x + world_object.size[0] * .5
+            world_object.top = world_object.y + world_object.size[1] * .5
+            self.parent.parent.coin.world_objects.append(world_object)
+            
+        return world_object
 
     def _render(self):
-        for coin in self.coins:
-            if coin not in self.coins_dict:
-                self.coins_dict[coin] = dict()
+        # if obj_type == 'coin'
+        for world_object in self.world_objects:
+            if world_object not in self.world_objects_dict:
+                self.world_objects_dict[world_object] = dict()
+                print world_object.collected
                 with self.canvas:
                     PushMatrix()
-                    self.coins_dict[coin]['translate'] = Translate()
-                    self.coins_dict[coin]['Quad'] = Quad(source=coin.texture, points=(-coin.size[0] * 0.5, -coin.size[1] * 0.5, 
-                        coin.size[0] * 0.5,  -coin.size[1] * 0.5, coin.size[0] * 0.5,  coin.size[1] * 0.5, 
-                        -coin.size[0] * 0.5,  coin.size[1] * 0.5))    
-                    self.coins_dict[coin]['translate'].xy = (coin.x, coin.y)
+                    self.world_objects_dict[world_object]['translate'] = Translate()
+                    self.world_objects_dict[world_object]['Quad'] = Quad(source=world_object.texture, points=(-world_object.size[0] * 0.5, -world_object.size[1] * 0.5, 
+                        world_object.size[0] * 0.5,  -world_object.size[1] * 0.5, world_object.size[0] * 0.5,  world_object.size[1] * 0.5, 
+                        -world_object.size[0] * 0.5,  world_object.size[1] * 0.5))    
+                    self.world_objects_dict[world_object]['translate'].xy = (world_object.x, world_object.y)
                     PopMatrix()
 
-            if self.parent.parent.player_character.collide_widget(coin) == True and coin._check_collision == True and abs(coin.x - self.parent.parent.player_character.x) < 45 and abs(coin.y - self.parent.parent.player_character.y) < 70:
-                coin.collected = True
-                coin._check_collision = False
-                self.coins_dict[coin]['translate'].xy = (-100, coin.y)
-                self.parent.parent.score.coin_collected()
-            if coin.x < -100:
-                self.coins.pop(self.coins.index(coin))
-                print 'COIN REMOVED'
-
-            elif coin.collected == False:       
-                self.coins_dict[coin]['translate'].xy = (coin.x, coin.y)
+            # controls rendering of coin world object
+            if world_object.type == 'coin':
+                if self.parent.parent.player_character.collide_widget(world_object) == True and world_object._check_collision == True and abs(world_object.x - self.parent.parent.player_character.x) < 45 and abs(world_object.y - self.parent.parent.player_character.y) < 70:
+                    world_object.collected = True
+                    world_object._check_collision = False
+                    self.world_objects_dict[world_object]['translate'].xy = (-100, world_object.y)
+                    self.parent.parent.score.coin_collected()
+                if world_object.x < -100:
+                    self.world_objects.pop(self.world_objects.index(world_object))
+                    print 'world_object REMOVED'
+                elif world_object.collected == False:
+                    self.world_objects_dict[world_object]['translate'].xy = (world_object.x, world_object.y)
 
 class Platform(object):
     x, y = -500, -500
@@ -682,7 +684,7 @@ class ScrollingForeground(Widget):
         if platform.size[0] > 200:
             platform.confined_enemy = self.parent.parent.confined_enemy.create_enemy(plat_y = platform.y + platform.size[1]*1.75, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
         if platform.size[0] < 200:
-            platform.coin = self.parent.parent.coin.create_coin(plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
+            platform.coin = self.parent.parent.coin.create_world_object(obj_type='coin', plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
         return platform
 
     def _update(self, dt):
