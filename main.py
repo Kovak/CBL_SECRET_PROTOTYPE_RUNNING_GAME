@@ -528,23 +528,23 @@ class ScrollingForeground(Widget):
 
     lines = [
         # top line
-        {'platform_type_ratio': 1,
+        {'platform_type_ratio': .5,
         'platform_max_y_change': 200,
         'max_height': .9*Window.size[1],
         'min_height': .6*Window.size[1],
-        'max_length': 6,
-        'max_distance': 700,
+        'max_length': 10,
+        'max_distance': 800,
         'min_distance': 100,
         'difficulty': 1,
         'up_prob': .2,
         'down_prob': .3},
 
         # base line
-        {'platform_type_ratio': .3,
+        {'platform_type_ratio': .25,
         'platform_max_y_change': 0,
-        'max_height': .25*Window.size[1],
+        'max_height': .2*Window.size[1],
         'min_height': 0,
-        'max_length': 4,
+        'max_length': 3,
         'max_distance': 200,
         'min_distance': 20,
         'difficulty': 0.6,
@@ -597,10 +597,10 @@ class ScrollingForeground(Widget):
         for x in range(int(self.lines[line]['max_length']*random.random())+1):
             heights.append(h)
             r = random.random()
-            if r > .75 and (h + 1)*self.tile_size[1] <= self.lines[line]['max_height']:
+            if r > 1 - self.lines[line]['up_prob'] and (h + 1)*self.tile_size[1] <= self.lines[line]['max_height']:
                 # build an additional level in next column
                 h += 1
-            elif r < .25 and (h - 1)*self.tile_size[1] >= self.lines[line]['min_height']:
+            elif r < self.lines[line]['down_prob'] and (h - 1)*self.tile_size[1] >= self.lines[line]['min_height']:
                 # go down a level
                 h -= 1
             else:
@@ -695,8 +695,8 @@ class ScrollingForeground(Widget):
             platform.y = -texture_size[1]*0.5
         else:
             y = last_height - texture_size[1] + random.randint(-self.lines[line]['platform_max_y_change'], self.lines[line]['platform_max_y_change'])
-            if y < -texture_size[1]*0.5: y = -texture_size[1]*0.5
-            if y > Window.size[1] - texture_size[1] - 150: y = Window.size[1] - texture_size[1] - 150
+            if y < self.lines[line]['min_height'] - texture_size[1]*0.5: y = self.lines[line]['min_height'] - texture_size[1]*0.5
+            if y > self.lines[line]['max_height'] - texture_size[1]*0.5: y = self.lines[line]['max_height'] - texture_size[1]*0.5
             platform.y = y
         platform.end_height = platform.y + texture_size[1]
         platform.line = line
