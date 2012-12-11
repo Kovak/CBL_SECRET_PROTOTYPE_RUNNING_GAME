@@ -153,7 +153,7 @@ class PlayerCharacter(Widget):
     jump_velocity = NumericProperty(250)
     is_jumping = BooleanProperty(False)
 
-    drop_velocity = NumericProperty(-200)
+    drop_velocity = NumericProperty(-300)
     is_dropping = BooleanProperty(False)
 
     gravity = NumericProperty(300)
@@ -480,6 +480,8 @@ class Platform(object):
     is_partially_off_screen = True
     end_height = 0
     line = 0
+    # if Platform is an orphan, it will NOT spawn new platforms after it is on the screen.
+    orphan = False
 
     def __init__(self, texture_sources, tile_size = (64,64), tiles_per_level = 1, platform_type = None):
         # takes a dictionary in the form {(r,c): filename.png} and converts it into a platform. If tile_per_level = n is provided,
@@ -509,26 +511,8 @@ class ScrollingForeground(Widget):
     initial_platforms = NumericProperty(0)
     current_platform_x = NumericProperty(0)
     
-    # # 25% is scaffolds, 75% floating
-    # platform_type_ratio = .25
-
-    # # maximum distance to go up or down between floating platforms
-    # platform_max_y_change = 256
-
-
-    # # maximum length of a scaffold
-    # max_length = 6
-
     # size of tiles used for scaffolding
     tile_size = (64,64)
-
-    # # range in distance between platforms
-    # max_distance = 300
-    # min_distance = 20
-
-    # # difficulty on a scale from 0 to 1. This effects the skewness of the distribution of distances between platforms
-    # # (0 means all distances are min_distance, 1 means all distances are max distance)
-    # difficulty = .5
 
     lines = [
         # top line
@@ -562,6 +546,7 @@ class ScrollingForeground(Widget):
         self.platforms_dict = dict()
         Clock.schedule_once(functools.partial(self._init_platform, 0, None))
         Clock.schedule_once(functools.partial(self._init_platform, 1, None))
+        self._create_initial_platforms(1)
         Clock.schedule_once(self._update)
 
 
@@ -647,45 +632,49 @@ class ScrollingForeground(Widget):
 
     def _signal_platform_on_screen(self, platform):
         print "PLATFORM COMPLETE"
+        if platform.orphan:
+            return
         interval = random.triangular(self.lines[platform.line]['min_distance'], self.lines[platform.line]['max_distance'],
                     self.lines[platform.line]['min_distance'] + self.lines[platform.line]['difficulty']*(self.lines[platform.line]['max_distance']
                      - self.lines[platform.line]['min_distance'])) / (self.speed * self.speed_multiplier)
 
         Clock.schedule_once(functools.partial(self._init_platform, platform.line, platform.end_height), interval)
 
-    def _create_floating_platform(self, line, last_height = None):
-        if self.initial_platforms < 2:
-            src = {(0,0): 'media/art/platforms/platform1.png'}
-            texture_size = CoreImage(src[(0,0)]).texture.size
+    def _create_initial_platforms(self, line):
+        src = {(0,0): 'media/art/platforms/platform1.png'}
+        texture_size = CoreImage(src[(0,0)]).texture.size
+        for x in range(0, Window.size[0], texture_size[0] - 50):
+            print "creating initial platform at", x
             platform = Platform(src, tile_size = texture_size, platform_type = 'floating')
-            platform.x = self.current_platform_x
-            self.current_platform_x += platform.size[0]
-            self.initial_platforms += 1
+            platform.x = x
             platform.y = -texture_size[1]*0.5
             platform.end_height = platform.y + texture_size[1]
             platform.line = line
-            return platform
+            platform.orphan = True
+            self.platforms.append(platform)
+
+
+    def _create_floating_platform(self, line, last_height = None):
+        src = random.choice([{(0,0): 'media/art/platforms/platform1.png'},
+            {(0,0): 'media/art/platforms/platform2.png'},
+            {(0,0): 'media/art/platforms/platform3.png'}])
+        texture_size = CoreImage(src[(0,0)]).texture.size
+        platform = Platform(src, tile_size = texture_size, platform_type = 'floating')
+        platform.x = Window.size[0]
+        if last_height is None:
+            platform.y = -texture_size[1]*0.5
         else:
-            src = random.choice([{(0,0): 'media/art/platforms/platform1.png'},
-                {(0,0): 'media/art/platforms/platform2.png'},
-                {(0,0): 'media/art/platforms/platform3.png'}])
-            texture_size = CoreImage(src[(0,0)]).texture.size
-            platform = Platform(src, tile_size = texture_size, platform_type = 'floating')
-            platform.x = Window.size[0]
-            if last_height is None:
-                platform.y = -texture_size[1]*0.5
-            else:
-                y = last_height - texture_size[1] + random.randint(-self.lines[line]['platform_max_y_change'], self.lines[line]['platform_max_y_change'])
-                if y < -texture_size[1]*0.5: y = -texture_size[1]*0.5
-                if y > Window.size[1] - texture_size[1] - 150: y = Window.size[1] - texture_size[1] - 150
-                platform.y = y
-            platform.end_height = platform.y + texture_size[1]
-            platform.line = line
-            if platform.size[0] > 200:
-                platform.enemy = self.parent.parent.confined_enemy.create_enemy(plat_y = platform.y + platform.size[1]*1.75, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
-            if platform.size[0] < 200:
-                platform.coin = self.parent.parent.coin.create_coin(plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x  + platform.size[0]*.5, plat_size = platform.size[0])
-            return platform
+            y = last_height - texture_size[1] + random.randint(-self.lines[line]['platform_max_y_change'], self.lines[line]['platform_max_y_change'])
+            if y < -texture_size[1]*0.5: y = -texture_size[1]*0.5
+            if y > Window.size[1] - texture_size[1] - 150: y = Window.size[1] - texture_size[1] - 150
+            platform.y = y
+        platform.end_height = platform.y + texture_size[1]
+        platform.line = line
+        if platform.size[0] > 200:
+            platform.enemy = self.parent.parent.confined_enemy.create_enemy(plat_y = platform.y + platform.size[1]*1.75, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
+        if platform.size[0] < 200:
+            platform.coin = self.parent.parent.coin.create_coin(plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x  + platform.size[0]*.5, plat_size = platform.size[0])
+        return platform
 
     def _update(self, dt):
         self._advance_time(dt)
