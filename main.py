@@ -488,6 +488,9 @@ class Platform(object):
     line = 0
     # if Platform is an orphan, it will NOT spawn new platforms after it is on the screen.
     orphan = False
+    walkable_textures = ['scaffolding-cplat-left-1.png', 'scaffolding-cplat-right-1.png', 'scaffolding-cplat-right-2.png', 
+            'scaffolding-mplatnopost-1.png', 'scaffolding-mplatwithpost-left-1.png', 'scaffolding-mplatwithpost-right-1.png', 
+            'platform1.png', 'platform2.png', 'platform3.png']
 
     def __init__(self, texture_sources, tile_size = (64,64), tiles_per_level = 1, platform_type = None):
         # takes a dictionary in the form {(r,c): filename.png} and converts it into a platform. If tile_per_level = n is provided,
@@ -506,8 +509,8 @@ class Platform(object):
         self.platform_heights = []
         for r in range(self.r):
             hs = []
-            for c in range(tiles_per_level - 1, self.c, tiles_per_level):
-                if (r,c) in texture_sources.keys(): hs.append(tile_size[1] * (c+1))
+            for c in range(self.c):
+                if (r,c) in texture_sources.keys() and os.path.basename(texture_sources[(r,c)]) in self.walkable_textures: hs.append(tile_size[1] * (c+1))
             self.platform_heights.append(hs)
         print self.platform_heights
 
@@ -650,7 +653,7 @@ class ScrollingForeground(Widget):
                     tile_dict[t] = self._get_tile_name(prefix, position, corner = corner)
         print tile_dict
 
-        platform = Platform(tile_dict, tiles_per_level = 3, platform_type = 'scaffold')
+        platform = Platform(tile_dict, platform_type = 'scaffold')
         platform.x = Window.size[0]
         platform.y = 0
         platform.end_height = platform.y + heights[-1] * platform.tile_size[1]
