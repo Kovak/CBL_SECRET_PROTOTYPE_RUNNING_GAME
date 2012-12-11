@@ -66,7 +66,7 @@ class RunningGame(Screen):
             if touch.ud['swipe'] == 'up':
                 self.player_character.exec_move("jump1")
             elif touch.ud['swipe'] == 'right':
-                self.player_character.sword_dash = True
+                self.player_character.exec_move("dash")
                 self.player_character.offensive_move = True
             elif touch.ud['swipe'] == 'down':
                 self.player_character.exec_move("drop")
@@ -208,7 +208,7 @@ class PlayerCharacter(Widget):
         elif move_name == 'drop':
             # you can only drop from a jump
             if self.jump_num == 0: return
-            anim = Animation(global_speed = 1, duration = .2)
+            anim = Animation(global_speed = .3, duration = .2)
             anim.start(self.game)
             self.is_jumping = False
             self.is_dropping = True
@@ -219,6 +219,18 @@ class PlayerCharacter(Widget):
             anim.start(self.game)
             self.is_dropping = False
             Clock.schedule_once(functools.partial(self.exec_move, 'walk'), .3)
+        elif move_name == 'dash':
+            anim = Animation(global_speed = 3, duration = .1)
+            anim.start(self.game)
+            self.is_dashing = True
+            Clock.schedule_once(functools.partial(self.exec_move, 'dash-end'), .7)
+        elif move_name == 'dash-end':
+            self.is_dashing = False
+            anim = Animation(global_speed = 1, duration = .1)
+            anim.start(self.game)
+            # as of now dash-end does not have an animation associated with it
+            self.exec_move('walk')
+            return
 
 
         self.animation_controller.set_animation(move_name)
@@ -230,7 +242,7 @@ class PlayerCharacter(Widget):
         # but if velocity used to be positive and now it's negative, execute the jump2 move
         if self.oyv > 0 and value <= 0:
             self.is_jumping = False
-            self.exec_move('jump2')
+            if not self.is_dashing: self.exec_move('jump2')
         self.oyv = value
 
     def die(self):
