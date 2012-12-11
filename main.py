@@ -527,7 +527,8 @@ class ScrollingForeground(Widget):
         # top line
         {'platform_type_ratio': 1,
         'platform_max_y_change': 200,
-        'max_height': 3,
+        'max_height': .9*Window.size[1],
+        'min_height': .6*Window.size[1],
         'max_length': 6,
         'max_distance': 700,
         'min_distance': 100,
@@ -536,10 +537,11 @@ class ScrollingForeground(Widget):
         'down_prob': .3},
 
         # base line
-        {'platform_type_ratio': .2,
+        {'platform_type_ratio': .3,
         'platform_max_y_change': 0,
-        'max_height': 1,
-        'max_length': 3,
+        'max_height': .25*Window.size[1],
+        'min_height': 0,
+        'max_length': 4,
         'max_distance': 200,
         'min_distance': 20,
         'difficulty': 0.6,
@@ -561,10 +563,13 @@ class ScrollingForeground(Widget):
 
     def _init_platform(self, line_num, last_height, *largs):
         if random.random() < self.lines[line_num]['platform_type_ratio']:
-            start_height = 1 if last_height is None else int(last_height / self.tile_size[1]) + random.randint(-1,1)
-            if start_height < 1: start_height = 1
+            if last_height is None: last_height = 0
+            start_height = last_height + random.randint(-self.lines[line_num]['platform_max_y_change'], self.lines[line_num]['platform_max_y_change'])
+            if start_height < self.lines[line_num]['min_height']: 
+                print "too small", self.lines[line_num]['min_height']
+                start_height = self.lines[line_num]['min_height']
             if start_height > self.lines[line_num]['max_height']: start_height = self.lines[line_num]['max_height']
-            self.platforms.append(self._create_scaffold(line_num, start_height = start_height, max_height = self.lines[line_num]['max_height'], max_length = self.lines[line_num]['max_length']))
+            self.platforms.append(self._create_scaffold(line_num, start_height = start_height))
         else:
             self.platforms.append(self._create_floating_platform(line_num, last_height = last_height))
 
@@ -579,58 +584,71 @@ class ScrollingForeground(Widget):
                     'mplatwithpost-right-2', 'fblock-1', 'mplatwithpost-left-2',
                     'mplatwithpost-right-1', 'mplatnopost-1', 'mplatwithpost-left-1'][position-1] + '.png'
 
-    def _create_scaffold(self, line, start_height = 1, max_height = 3, max_length = 5):
+    def _create_scaffold(self, line, start_height = 0):
+        print "creating scaffold with start height", start_height
         prefix = 'media/art/platforms/scaffolding-'
         
         # first create list of heights so we know what to build
-        h = start_height
+        h = int(start_height/self.tile_size[1]) + 1
         heights = []
-        for x in range(int(max_length*random.random())+1):
+        for x in range(int(self.lines[line]['max_length']*random.random())+1):
             heights.append(h)
             r = random.random()
-            if r > .75 and h + 1 <= max_height:
+            if r > .75 and (h + 1)*self.tile_size[1] <= self.lines[line]['max_height']:
                 # build an additional level in next column
                 h += 1
-            elif r < .25 and h - 1 >= 1:
+            elif r < .25 and (h - 1)*self.tile_size[1] >= self.lines[line]['min_height']:
                 # go down a level
                 h -= 1
             else:
                 # stay at the same level
                 pass
+        print "heights", heights, h
+
+        # make 20% of the levels underneath the top level also walkable
+        last_level = max(heights)
+        walkable_levels = [last_level]
+        for h in range(last_level, 0, -1):
+            if last_level - h > 2 and h >= 2 and random.random() < .4: 
+                last_level = h
+                walkable_levels.append(h)
+        print "walk", walkable_levels
 
         # now actually build the scaffolding
         tile_dict = {}
         for col_idx, h in enumerate(heights):
             #build a "bridge" if we are connecting two scaffolds of the same height
             if (col_idx != 0) and (col_idx != len(heights) - 1) and h == heights[col_idx-1] == heights[col_idx+1]:
-                tile_dict[(2*col_idx, 3*h-1)] = tile_dict[(2*col_idx + 1, 3*h-1)] = self._get_tile_name(prefix, 8)
+                tile_dict[(2*col_idx, h-1)] = tile_dict[(2*col_idx + 1, h-1)] = self._get_tile_name(prefix, 8)
                 continue
             for r in (0,1):
-                for c in range(3*h):
+                for c in range(h):
                     t = (r + 2*col_idx, c)
-
                     corner = False
                     if r == 0:
-                        if col_idx == 0:
+                        if col_idx == 0:    
                             corner = True
-
-                        if c % 3 == 0:
-                            position = 1
-                        elif c % 3 == 1:
-                            position = 4
-                        elif c % 3 == 2:
+                        if col_idx > 0 and c >= heights[col_idx - 1]:
+                            tile_dict[(t[0]-1, t[1])] = self._get_tile_name(prefix, 3, corner = False)
+                        if c + 1 in walkable_levels + [h]:
                             position = 7
+                        elif c + 2 in walkable_levels + [h]:
+                            position = 4 
+                        else:
+                            position = 1  
                     elif r == 1:
                         if col_idx == len(heights) - 1:
                             corner = True
-
-                        if c % 3 == 0:
-                            position = 3
-                        elif c % 3 == 1:
-                            position = 6
-                        elif c % 3 == 2:
+                        if col_idx < len(heights) - 1 and c >= heights[col_idx + 1]:
+                            tile_dict[(t[0]+1, t[1])] = self._get_tile_name(prefix, 1, corner = False)
+                        if c + 1 in walkable_levels + [h]:
                             position = 9
+                        elif c + 2 in walkable_levels + [h]:
+                            position = 6 
+                        else:
+                            position = 3  
                     tile_dict[t] = self._get_tile_name(prefix, position, corner = corner)
+        print tile_dict
 
         platform = Platform(tile_dict, tiles_per_level = 3, platform_type = 'scaffold')
         platform.x = Window.size[0]
