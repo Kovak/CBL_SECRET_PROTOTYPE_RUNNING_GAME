@@ -267,7 +267,7 @@ class PlayerCharacter(Widget):
 
         # player is in the air and not actively jumping
         if not is_on_ground:
-            if not self.is_jumping and not self.is_dropping: self.exec_move('jump2')
+            if not self.is_jumping and not self.is_dropping and not self.is_dashing: self.exec_move('jump2')
             self.y_velocity -= self.gravity * dt
 
         self.oy = self.y
