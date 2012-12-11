@@ -270,6 +270,9 @@ class PlayerCharacter(Widget):
             if not self.is_jumping and not self.is_dropping and not self.is_dashing: self.exec_move('jump2')
             self.y_velocity -= self.gravity * dt
 
+        if self.is_dashing:
+            self.y_velocity = 0
+            
         self.oy = self.y
         self.ox = self.x
         self.y += self.y_velocity * dt
@@ -508,8 +511,6 @@ class Platform(object):
 class ScrollingForeground(Widget):
     speed = NumericProperty(200)
     speed_multiplier = NumericProperty(1)
-    initial_platforms = NumericProperty(0)
-    current_platform_x = NumericProperty(0)
     
     # size of tiles used for scaffolding
     tile_size = (64,64)
