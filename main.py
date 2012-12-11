@@ -153,7 +153,7 @@ class PlayerCharacter(Widget):
     jump_velocity = NumericProperty(250)
     is_jumping = BooleanProperty(False)
 
-    drop_velocity = NumericProperty(-500)
+    drop_velocity = NumericProperty(-200)
     is_dropping = BooleanProperty(False)
 
     gravity = NumericProperty(300)
@@ -208,7 +208,7 @@ class PlayerCharacter(Widget):
         elif move_name == 'drop':
             # you can only drop from a jump
             if self.jump_num == 0: return
-            anim = Animation(global_speed = 0, duration = .2)
+            anim = Animation(global_speed = 1, duration = .2)
             anim.start(self.game)
             self.is_jumping = False
             self.is_dropping = True

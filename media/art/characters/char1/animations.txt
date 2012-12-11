@@ -1,5 +1,7 @@
 walk:
+	char1-idle1.png: .25
     char1-step1.png: .25
+    char1-idle2.png: .25
     char1-step2.png: .25
 jump1:
     char1-jump1.png: .2
@@ -8,7 +10,13 @@ jump2:
     char1-jump2.png: .2
     char1-jump2-2.png: .2
 drop:
-    char1-downdash_fall.png: .1
+    char1-downdash_fall1.png: .1
+    char1-downdash_fall2.png: .1
 drop-land:
     char1-downdash_land1.png: .1
     char1-downdash_land2.png: .2
+dash:
+	char1-sworddash1.png: .2
+	char1-sworddash2.png: .2
+	char1-sworddash3.png: .1
+	char1-sworddash4.png: .2
