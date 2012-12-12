@@ -42,20 +42,20 @@ class RunningGame(Screen):
         self.foreground = ScrollingForeground(game = self)
         self.midground = ScrollingMidground()
         self.background = ScrollingBackground()
-        self.landing_fx = ParticleEffects(game = self)
+        self.coin_shimmer = ParticleEffects(game = self)
         self.life_count = LivesDisplay()
         self.score = ScoreDisplay()
-        self.confined_enemy = ConfinedEnemy()
-        self.goldcoin = WorldObject()
+        self.confined_enemy = ConfinedEnemy(game = self)
+        self.goldcoin = WorldObject(game = self)
         self.add_widget(self.background)
         self.add_widget(self.midground)
         self.add_widget(self.foreground)
         self.add_widget(self.score)
         self.add_widget(self.life_count)
         self.add_widget(self.confined_enemy)
+        self.add_widget(self.coin_shimmer)
         self.add_widget(self.goldcoin)
         self.add_widget(self.player_character)
-        self.add_widget(self.landing_fx)
 
 
     def on_touch_up(self, touch):
@@ -182,6 +182,7 @@ class PlayerCharacter(Widget):
         self.y = Window.height * .2
         self.size = (82, 150)
         self.size_hint = (None, None)
+        self.collided_platform = ObjectProperty(None)
         self.render_dict = dict()
         self.animation_controller = AnimationController('char1', 'walk')
         Clock.schedule_once(self._update)
@@ -201,6 +202,7 @@ class PlayerCharacter(Widget):
                 for h in each.platform_heights[tile_idx]:
                      if abs(self.y - (each.y + h)) < 10:
                         self.y = each.y + h
+                        each.confined_enemy.attack_command = True
                         return True
         return False
 
@@ -258,11 +260,11 @@ class PlayerCharacter(Widget):
         self.game.global_speed = 1
         # self.down_dash_active = False
 
-        if self.parent.parent.life_count.lives > 0:
-            self.parent.parent.life_count.decrease_lives()
+        if self.game.life_count.lives > 0:
+            self.game.life_count.decrease_lives()
 
-        if self.parent.parent.life_count.lives == 0:
-            self.parent.parent.manager.current = 'replay'
+        if self.game.life_count.lives == 0:
+            self.game.manager.current = 'replay'
 
     def _advance_time(self, dt):
         is_on_ground = self._check_collision()
@@ -279,6 +281,8 @@ class PlayerCharacter(Widget):
 
         # player is in the air and not actively jumping
         if not is_on_ground:
+            for each in self.game.foreground.platforms:
+                each.confined_enemy.attack_command = False
             if not self.is_jumping and not self.is_dropping and not self.is_dashing: self.exec_move('jump2')
             self.y_velocity -= self.gravity * dt
 
@@ -354,6 +358,7 @@ class ConfinedEnemy(Widget):
     speed = NumericProperty(200)
     texture = StringProperty(None)
     speed_multiplier = NumericProperty(1)
+    game = ObjectProperty(None)
 
     def __init__(self, **kwargs):
         super(ConfinedEnemy, self).__init__(**kwargs)
@@ -377,6 +382,10 @@ class ConfinedEnemy(Widget):
         enemy.check_health = True
         enemy.active = True
         enemy.outside_range = False
+        enemy.attack_command = False
+        enemy.attack_multiplier = 1
+        enemy.anim_num = random.randint(1,3)
+        print 'enemy num!!!', enemy.anim_num
         enemy.animation_controller = AnimationController('mechaspiderturtle', 'walkleft')
         enemy.texture = enemy.animation_controller.textures[enemy.animation_controller.active_texture_index]
         enemy.texture, enemy.size = enemy.animation_controller.get_frame()
@@ -386,11 +395,31 @@ class ConfinedEnemy(Widget):
 
     def animate_con_enemy(self, enemy, plat_x, scroll_multiplier):
         if enemy.move_left == True:
-            enemy.x -= scroll_multiplier * 1.5
-            move_name = 'walkleft'
+            if enemy.anim_num == 1:
+                enemy.x -= scroll_multiplier * enemy.attack_multiplier * 1.2
+            if enemy.anim_num == 2:
+                enemy.x -= scroll_multiplier * enemy.attack_multiplier * 1.5
+            if enemy.anim_num == 3:
+                enemy.x -= scroll_multiplier * enemy.attack_multiplier * 1.7
+            if enemy.attack_command == True and self.game.player_character.x < enemy.x:
+                move_name = 'walkattackleft'
+                enemy.attack_multiplier = 1.75
+            else:
+                move_name = 'walkleft'
+                enemy.attack_multiplier = 1
         if enemy.move_right == True:
-            enemy.x += scroll_multiplier * .5
-            move_name = 'walkright'
+            if enemy.anim_num == 1:
+                enemy.x += scroll_multiplier * enemy.attack_multiplier * .3
+            if enemy.anim_num == 2:
+                enemy.x += scroll_multiplier * enemy.attack_multiplier * .5
+            if enemy.anim_num == 3:
+                enemy.x += scroll_multiplier * enemy.attack_multiplier * .7
+            if enemy.attack_command == True and self.game.player_character.x > enemy.x:
+                move_name = 'walkattackright'
+                enemy.attack_multiplier = 1.75
+            else:
+                move_name = 'walkright'
+                enemy.attack_multiplier = 1
         if enemy.x < enemy.min:
             enemy.move_right = True
             enemy.move_left = False
@@ -415,10 +444,10 @@ class ConfinedEnemy(Widget):
                         -enemy.size[0] * 0.5, enemy.size[1] * 0.5))
                     self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
                     PopMatrix()
-            if self.parent.parent.player_character.collide_widget(enemy) == True and self.parent.parent.player_character.offensive_move == False and enemy.killed == False and abs(enemy.x - self.parent.parent.player_character.x) < 50 and abs(enemy.y - self.parent.parent.player_character.y) < 100 and enemy.killed_player == False:
-                self.parent.parent.player_character.die()
+            if self.game.player_character.collide_widget(enemy) == True and self.game.player_character.offensive_move == False and enemy.killed == False and abs(enemy.x - self.game.player_character.x) < 50 and abs(enemy.y - self.game.player_character.y) < 100 and enemy.killed_player == False:
+                self.game.player_character.die()
                 enemy.killed_player = True
-            if self.parent.parent.player_character.collide_widget(enemy) == True and self.parent.parent.player_character.offensive_move == True and enemy.check_health == True and self.parent.parent.player_character.x - enemy.x < 60 and abs(enemy.y - self.parent.parent.player_character.y) < 150:
+            if self.game.player_character.collide_widget(enemy) == True and self.game.player_character.offensive_move == True and enemy.check_health == True and self.game.player_character.x - enemy.x < 60 and abs(enemy.y - self.game.player_character.y) < 150:
                 enemy.killed = True
                 enemy.check_health = False
                 self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
@@ -442,6 +471,7 @@ class ScoringObject(object):
 class WorldObject(Widget):
     speed = NumericProperty(200)
     texture = StringProperty(None)
+    game = ObjectProperty(None)
 
     def __init__(self, **kwargs):
         super(WorldObject, self).__init__(**kwargs)
@@ -464,7 +494,7 @@ class WorldObject(Widget):
             world_object.texture, world_object.size = world_object.animation_controller.get_frame()
             world_object.right = world_object.x + world_object.size[0] * .5
             world_object.top = world_object.y + world_object.size[1] * .5
-            self.parent.parent.goldcoin.world_objects.append(world_object)
+            self.game.goldcoin.world_objects.append(world_object)
             
         return world_object
 
@@ -484,11 +514,11 @@ class WorldObject(Widget):
 
             # controls rendering of goldcoin world object
             if world_object.type == 'goldcoin':
-                if self.parent.parent.player_character.collide_widget(world_object) == True and world_object._check_collision == True and abs(world_object.x - self.parent.parent.player_character.x) < 45 and abs(world_object.y - self.parent.parent.player_character.y) < 70:
+                if self.game.player_character.collide_widget(world_object) == True and world_object._check_collision == True and abs(world_object.x - self.game.player_character.x) < 45 and abs(world_object.y - self.game.player_character.y) < 70:
                     world_object.collected = True
                     world_object._check_collision = False
                     self.world_objects_dict[world_object]['translate'].xy = (-100, world_object.y)
-                    self.parent.parent.score.coin_collected()
+                    self.game.score.coin_collected()
                 if world_object.x < -100:
                     self.world_objects.pop(self.world_objects.index(world_object))
                 elif world_object.collected == False:
@@ -732,16 +762,16 @@ class ScrollingForeground(Widget):
         platform.end_height = platform.y + texture_size[1]
         platform.line = line
         if platform.size[0] > 200:
-            platform.confined_enemy = self.parent.parent.confined_enemy.create_enemy(plat_y = platform.y + platform.size[1]*1.5, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
+            platform.confined_enemy = self.game.confined_enemy.create_enemy(plat_y = platform.y + platform.size[1]*1.5, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
         if platform.size[0] < 200:
-            platform.goldcoin = self.parent.parent.goldcoin.create_world_object(obj_type='goldcoin', plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
+            platform.goldcoin = self.game.goldcoin.create_world_object(obj_type='goldcoin', plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
         return platform
 
     def _update(self, dt):
         self._advance_time(dt)
         self._render()
-        self.parent.parent.confined_enemy._render()
-        self.parent.parent.goldcoin._render()
+        self.game.confined_enemy._render()
+        self.game.goldcoin._render()
         Clock.schedule_once(self._update)
 
     def _advance_time(self, dt):
@@ -755,6 +785,7 @@ class ScrollingForeground(Widget):
                     platform.goldcoin.active = False
                 else:
                     platform.goldcoin.x = platform.x + platform.size[0]*.5
+                    self.game.coin_shimmer.goldcoin_shimmer(dt, emit_x=platform.goldcoin.x, emit_y=platform.goldcoin.y)
             # set confined enemy x to correspond with its platform
             if platform.confined_enemy.active == True:
                 if platform.confined_enemy.x < -100:
@@ -763,7 +794,7 @@ class ScrollingForeground(Widget):
                 else:
                     platform.confined_enemy.min = platform.x
                     platform.confined_enemy.max = platform.x + platform.size[0]
-                    platform.confined_enemy = self.parent.parent.confined_enemy.animate_con_enemy(enemy=platform.confined_enemy, plat_x=platform.x, scroll_multiplier=scroll_multiplier)
+                    platform.confined_enemy = self.game.confined_enemy.animate_con_enemy(enemy=platform.confined_enemy, plat_x=platform.x, scroll_multiplier=scroll_multiplier)
 
             if platform.x < -platform.size[0]:
                 self.platforms.pop(self.platforms.index(platform))
@@ -815,6 +846,15 @@ class ParticleEffects(Widget):
             self.shoot_fire.emitter_y = self.game.player_character.y
             self.shoot_fire.start(duration = 1)
             Clock.schedule_once(self.shoot_fire.stop, timeout = 1)
+
+    def goldcoin_shimmer(self, dt, emit_x, emit_y, name = 'ParticleEffects/templates/shoot_spell.pex'):
+        return
+        # with self.canvas:
+        #     self.shimmer = ParticleSystem(name)
+        #     self.shimmer.emitter_x = emit_x
+        #     self.shimmer.emitter_y = emit_y
+        #     self.shimmer.start(duration = 1)
+        #     Clock.schedule_once(self.shimmer.stop, timeout = 1)
 
 class ScrollImage(object):
     x, y = -500, -500
