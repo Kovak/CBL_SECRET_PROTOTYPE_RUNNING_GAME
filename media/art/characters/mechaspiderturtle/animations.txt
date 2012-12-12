@@ -1,20 +1,20 @@
-walk-right:
+walkright:
 	mechaspiderturtle-idle1-right.png: .2
-    mechaspiderturtle-step1-right.png: .2
-    mechaspiderturtle-idle1-right.png: .2
-    mechaspiderturtle-step2-right.png: .2
-walk-left:
-    mechaspiderturtle-idle1-left.png: .2
-    mechaspiderturtle-step1-left.png: .2
-    mechaspiderturtle-idle1-left.png: .2
-    mechaspiderturtle-step2-left.png: .2
-walk-attack-right:
-    mechaspiderturtle-idle1-right-attack.png: .15
-    mechaspiderturtle-step1-right-attack.png: .15
-    mechaspiderturtle-idle1-right-attack.png: .15
-    mechaspiderturtle-step2-right-attack.png: .15
-walk-attack-left:
-    mechaspiderturtle-idle1-left-attack.png: .15
-    mechaspiderturtle-step1-left-attack.png: .15
-    mechaspiderturtle-idle1-left-attack.png: .15
-    mechaspiderturtle-step2-left-attack.png: .15
+    	mechaspiderturtle-step1-right.png: .2
+    	mechaspiderturtle-idle1-right.png: .2
+    	mechaspiderturtle-step2-right.png: .2
+walkleft:
+    	mechaspiderturtle-idle1-left.png: .2
+    	mechaspiderturtle-step1-left.png: .2
+    	mechaspiderturtle-idle1-left.png: .2
+    	mechaspiderturtle-step2-left.png: .2
+walkattackright:
+    	mechaspiderturtle-idle1-right-attack.png: .15
+    	mechaspiderturtle-step1-right-attack.png: .15
+    	mechaspiderturtle-idle1-right-attack.png: .15
+    	mechaspiderturtle-step2-right-attack.png: .15
+walkattackleft:
+    	mechaspiderturtle-idle1-left-attack.png: .15
+    	mechaspiderturtle-step1-left-attack.png: .15
+    	mechaspiderturtle-idle1-left-attack.png: .15
+    	mechaspiderturtle-step2-left-attack.png: .15

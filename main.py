@@ -93,6 +93,7 @@ class AnimationController(Widget):
 
     collectible_directory = 'media/art/collectibles'
     char_directory = 'media/art/characters/'
+    conf_enemy_dir = 'media/art/characters'
     active_animation = StringProperty(None)
     active_texture_index = 0
     
@@ -110,6 +111,10 @@ class AnimationController(Widget):
         if char_name == 'goldcoin':
             search_dir = os.path.join(self.collectible_directory, char_name)
             self.active_dir = self.collectible_directory
+        if char_name == 'mechaspiderturtle':
+            search_dir = os.path.join(self.conf_enemy_dir, char_name)
+            self.active_dir = self.conf_enemy_dir
+
 
         self.animations = {}
         anim_name = None
@@ -354,15 +359,9 @@ class ConfinedEnemy(Widget):
         super(ConfinedEnemy, self).__init__(**kwargs)
         self.enemies = list()
         self.enemies_dict = dict()
-        # Clock.schedule_once(self._init_enemies)
-        # Clock.schedule_once(self._update, timeout=2)
 
     def create_enemy(self, plat_y, plat_x, plat_size):
         enemy = Enemy()
-        enemy.texture = 'media/art/characters/testcharacter.png'
-        texture = Image(source = 'media/art/characters/testcharacter.png')
-        enemy.size = texture.texture_size
-        enemy.bbox = enemy.size
         enemy.min = plat_x
         enemy.max = plat_x + plat_size
         enemy.y = plat_y
@@ -372,22 +371,26 @@ class ConfinedEnemy(Widget):
         enemy.move_left = True
         enemy.move_right = False
         enemy.right = enemy.x + enemy.size[0] * .5
-        # enemy.left = enemy.x - enemy.size[0] * .5
         enemy.top = enemy.y + enemy.size[1] * .5
-        # enemy.bottom = enemy.y - enemy.size[1] *.5
         enemy.killed = False
         enemy.killed_player = False
         enemy.check_health = True
         enemy.active = True
         enemy.outside_range = False
+        enemy.animation_controller = AnimationController('mechaspiderturtle', 'walkleft')
+        enemy.texture = enemy.animation_controller.textures[enemy.animation_controller.active_texture_index]
+        enemy.texture, enemy.size = enemy.animation_controller.get_frame()
         self.enemies.append(enemy)
+
         return enemy
 
     def animate_con_enemy(self, enemy, plat_x, scroll_multiplier):
         if enemy.move_left == True:
             enemy.x -= scroll_multiplier * 1.5
+            move_name = 'walkleft'
         if enemy.move_right == True:
             enemy.x += scroll_multiplier * .5
+            move_name = 'walkright'
         if enemy.x < enemy.min:
             enemy.move_right = True
             enemy.move_left = False
@@ -397,6 +400,7 @@ class ConfinedEnemy(Widget):
         if enemy.x < -100:
             enemy.outside_range = True
             enemy.active = False
+        enemy.animation_controller.set_animation(move_name)
         return enemy
 
     def _render(self):
@@ -406,7 +410,7 @@ class ConfinedEnemy(Widget):
                 with self.canvas:
                     PushMatrix()
                     self.enemies_dict[enemy]['translate'] = Translate()
-                    self.enemies_dict[enemy]['Quad'] = Quad(source=enemy.texture, points=(-enemy.size[0] * 0.5, -enemy.size[1] * 0.5,
+                    self.enemies_dict[enemy]['Quad'] = Quad(texture=enemy.texture, points=(-enemy.size[0] * 0.5, -enemy.size[1] * 0.5,
                         enemy.size[0] * 0.5, -enemy.size[1] * 0.5, enemy.size[0] * 0.5, enemy.size[1] * 0.5,
                         -enemy.size[0] * 0.5, enemy.size[1] * 0.5))
                     self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
@@ -425,6 +429,8 @@ class ConfinedEnemy(Widget):
 
             elif enemy.killed == False:
                 self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
+                enemy.texture, enemy.size = enemy.animation_controller.get_frame()
+                self.enemies_dict[enemy]['Quad'].texture = enemy.texture
 
 class ScoringObject(object):
     x, y = -500, -500
@@ -455,37 +461,12 @@ class WorldObject(Widget):
         if obj_type == 'goldcoin':
             world_object.animation_controller = AnimationController('goldcoin', 'resting')
             world_object.texture = world_object.animation_controller.textures[world_object.animation_controller.active_texture_index]
-            # texture = Image(source = 'media/art/collectibles//goldcoin/goldcoin1.png')
-            # world_object.size = texture.texture_size
             world_object.texture, world_object.size = world_object.animation_controller.get_frame()
             world_object.right = world_object.x + world_object.size[0] * .5
             world_object.top = world_object.y + world_object.size[1] * .5
-            # self.animation_controller.set_animation('resting')
             self.parent.parent.goldcoin.world_objects.append(world_object)
             
         return world_object
-
-    # def animate_goldcoin(self, move_name, *largs):
-    #     # move-specific code that is NOT animation related goes here (for example, physics)
-    #     if move_name == 'jump1':
-    #         if self.jump_num >= self.max_jumps: return
-    #         self.jump_num += 1
-    #         self.is_jumping = True
-    #         self.y_velocity += self.jump_velocity
-    #     elif move_name == 'drop':
-    #         # you can only drop from a jump
-    #         if self.jump_num == 0: return
-    #         anim = Animation(global_speed = .3, duration = .2)
-    #         anim.start(self.game)
-    #         self.is_jumping = False
-    #         self.is_dropping = True
-    #         self.y_velocity = self.drop_velocity
-    #     elif move_name == 'drop-land':
-    #         # get the game clock running back at normal speed again
-    #         anim = Animation(global_speed = 1, duration = .5)
-    #         anim.start(self.game)
-    #         self.is_dropping = False
-    #         Clock.schedule_once(functools.partial(self.exec_move, 'walk'), .3)
 
     def _render(self):
         for world_object in self.world_objects:
@@ -512,7 +493,6 @@ class WorldObject(Widget):
                     self.world_objects.pop(self.world_objects.index(world_object))
                 elif world_object.collected == False:
                     self.world_objects_dict[world_object]['translate'].xy = (world_object.x, world_object.y)
-                    world_object.texture = world_object.animation_controller.textures[world_object.animation_controller.active_texture_index]
                     world_object.texture, world_object.size = world_object.animation_controller.get_frame()
                     self.world_objects_dict[world_object]['Quad'].texture = world_object.texture
                     
@@ -752,7 +732,7 @@ class ScrollingForeground(Widget):
         platform.end_height = platform.y + texture_size[1]
         platform.line = line
         if platform.size[0] > 200:
-            platform.confined_enemy = self.parent.parent.confined_enemy.create_enemy(plat_y = platform.y + platform.size[1]*1.75, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
+            platform.confined_enemy = self.parent.parent.confined_enemy.create_enemy(plat_y = platform.y + platform.size[1]*1.5, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
         if platform.size[0] < 200:
             platform.goldcoin = self.parent.parent.goldcoin.create_world_object(obj_type='goldcoin', plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
         return platform
