@@ -160,17 +160,18 @@ class SoundController(object):
 
     sound_dir = 'media/sounds/'
 
+
     def __init__(self, game=None):
         super(SoundController, self).__init__()
-    
+        self.sound_dict = {}
         for f in os.listdir(self.sound_dir):
             if os.path.splitext(os.path.basename(f))[1] != '.wav': continue
-            setattr(self, os.path.splitext(os.path.basename(f))[0], SoundLoader.load(os.path.join(self.sound_dir, os.path.basename(f))))
+            self.sound_dict[os.path.splitext(os.path.basename(f))[0]] = SoundLoader.load(os.path.join(self.sound_dir, os.path.basename(f)))
 
     def play(self, sound_name):
-        try:
-            getattr(self, sound_name).play()
-        except:
+        if sound_name in self.sound_dict:
+            self.sound_dict[sound_name].play()
+        else:
             print "sound",sound_name,"not found in", self.sound_dir
 
 
