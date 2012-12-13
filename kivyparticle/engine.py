@@ -366,8 +366,9 @@ class ParticleSystem(Widget):
                 self.particles_dict[particle] = dict()
                 color = particle.color[:]
                 with self.canvas:
-                    self.particles_dict[particle]['color'] = Color(color[0], color[1], color[2], color[3])
+                    
                     PushMatrix()
+                    self.particles_dict[particle]['color'] = Color(color[0], color[1], color[2], color[3])
                     self.particles_dict[particle]['translate'] = Translate()
                     self.particles_dict[particle]['rotate'] = Rotate()
                     self.particles_dict[particle]['rotate'].set(particle.rotation, 0, 0, 1)

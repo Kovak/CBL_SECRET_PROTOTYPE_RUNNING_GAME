@@ -55,11 +55,12 @@ class RunningGame(Screen):
         self.add_widget(self.score)
         self.add_widget(self.life_count)
         self.add_widget(self.confined_enemy)
+        self.add_widget(self.player_character)
         self.add_widget(self.coin_shimmer)
         self.add_widget(self.goldcoin)
         self.add_widget(self.dash_particles)
         self.add_widget(self.landing_dust_plume)
-        self.add_widget(self.player_character)
+        
 
 
     def on_touch_up(self, touch):
@@ -844,31 +845,42 @@ class ParticleEffects(Widget):
     game = ObjectProperty(None)
 
     def emit_dust_plume(self, dt, emit_x, emit_y, name = 'ParticleEffects/game_effects/hhs-dirtplume.pex'):
-        return 
-        with self.canvas:
-            self.dust_plume = ParticleSystem(name)
-            self.dust_plume.emitter_x = emit_x + 32
-            self.dust_plume.emitter_y = emit_y
-            self.dust_plume.start(duration = .5)
-            Clock.schedule_once(self.dust_plume.stop, timeout = .5)
+        self.dust_plume = ParticleSystem(name)
+        self.dust_plume.emitter_x = emit_x + 32
+        self.dust_plume.emitter_y = emit_y
+        self.dust_plume.start()
+        self.add_widget(self.dust_plume)
+        Clock.schedule_once(self.stop_dust_plume, 1.0)
+
+    def stop_dust_plume(self,dt):
+        self.dust_plume.stop(clear=True)
+        self.remove_widget(self.dust_plume)
+        
 
     def emit_dash_particles(self, dt, emit_x, emit_y, name = 'ParticleEffects/game_effects/hhs-dash.pex'):
-        return
-        with self.canvas:
-            self.dash_particles = ParticleSystem(name)
-            self.dash_particles.emitter_x = emit_x + 32
-            self.dash_particles.emitter_y = emit_y
-            self.dash_particles.start(duration = .7)
-            Clock.schedule_once(self.dash_particles.stop, timeout = .7)
+        self.dash_particles = ParticleSystem(name)
+        self.dash_particles.emitter_x = emit_x + 32
+        self.dash_particles.emitter_y = emit_y
+        self.dash_particles.start()
+        self.add_widget(self.dash_particles)
+        Clock.schedule_once(self.dash_particles.stop, .7)
+
+    def stop_dash_particles(self,dt):
+        self.dash_particles.stop(clear=True)
+        self.remove_widget(self.dash_particles)
 
     def goldcoin_shimmer(self, dt, emit_x, emit_y, name = 'ParticleEffects/game_effects/hhs-coinpowerup1.pex'):
         return
-        with self.canvas:
-            self.shimmer = ParticleSystem(name)
-            self.shimmer.emitter_x = emit_x
-            self.shimmer.emitter_y = emit_y
-            self.shimmer.start(duration = .3)
-            Clock.schedule_once(self.shimmer.stop, timeout = .3)
+        self.shimmer = ParticleSystem(name)
+        self.shimmer.emitter_x = emit_x - 30
+        self.shimmer.emitter_y = emit_y
+        self.shimmer.start()
+        self.add_widget(self.shimmer)
+        Clock.schedule_once(self.stop_shimmer, .3)
+
+    def stop_shimmer(self,dt):
+        self.shimmer.stop(clear=True)
+        self.remove_widget(self.shimmer)
 
 class ScrollImage(object):
     x, y = -500, -500
