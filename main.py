@@ -71,11 +71,9 @@ class RunningGame(Screen):
                 self.player_character.exec_move("jump1")
             elif touch.ud['swipe'] == 'right':
                 self.player_character.exec_move("dash")
-                self.player_character.offensive_move = True
             elif touch.ud['swipe'] == 'down':
                 self.player_character.exec_move("drop")
-                self.player_character.offensive_move = True
-
+            
     def on_touch_move(self, touch):
         if touch.y > touch.oy and abs(touch.y - touch.oy) > 20 and abs(touch.y - touch.oy) > abs(touch.x - touch.ox):
             touch.ud['swipe'] = 'up'
@@ -218,6 +216,7 @@ class PlayerCharacter(Widget):
             if self.jump_num >= self.max_jumps: return
             self.jump_num += 1
             self.is_jumping = True
+            self.offensive_move = False
             self.y_velocity += self.jump_velocity
         elif move_name == 'drop':
             # you can only drop from a jump
@@ -226,6 +225,7 @@ class PlayerCharacter(Widget):
             anim.start(self.game)
             self.is_jumping = False
             self.is_dropping = True
+            self.offensive_move = True
             self.y_velocity = self.drop_velocity
         elif move_name == 'drop-land':
             # get the game clock running back at normal speed again
@@ -233,16 +233,19 @@ class PlayerCharacter(Widget):
             anim.start(self.game)
             self.is_dropping = False
             self.landed = True
+            self.offensive_move = False
             Clock.schedule_once(functools.partial(self.exec_move, 'walk'), .3)
         elif move_name == 'dash':
             anim = Animation(global_speed = 3, duration = .1)
             anim.start(self.game)
             self.is_dashing = True
+            self.offensive_move = True
             Clock.schedule_once(functools.partial(self.exec_move, 'dash-end'), .7)
         elif move_name == 'dash-end':
             self.is_dashing = False
             anim = Animation(global_speed = 1, duration = .1)
             anim.start(self.game)
+            self.offensive_move = False
             # as of now dash-end does not have an animation associated with it
             self.exec_move('walk')
             return
