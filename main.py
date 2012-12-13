@@ -131,7 +131,7 @@ class AnimationController(Widget):
                     txtr = CoreImage(os.path.join(self.active_dir, char_name, t[0])).texture
                     attrs.append((txtr, txtr.size, float(t[1])))
             if anim_name is not None: self.animations[anim_name] = attrs
-        print self.animations
+        # print self.animations
 
     def _next_frame(self,dt):
         self.active_texture_index = self.active_texture_index + 1 if self.active_texture_index < len(self.textures) - 1 else 0
@@ -371,7 +371,6 @@ class ConfinedEnemy(Widget):
         enemy.max = plat_x + plat_size
         enemy.y = plat_y
         enemy.x = plat_x
-        print 'created enemy at: ', enemy.x
         enemy.test = True
         enemy.move_left = True
         enemy.move_right = False
@@ -385,7 +384,6 @@ class ConfinedEnemy(Widget):
         enemy.attack_command = False
         enemy.attack_multiplier = 1
         enemy.anim_num = random.randint(1,3)
-        print 'enemy num!!!', enemy.anim_num
         enemy.animation_controller = AnimationController('mechaspiderturtle', 'walkleft')
         enemy.texture = enemy.animation_controller.textures[enemy.animation_controller.active_texture_index]
         enemy.texture, enemy.size = enemy.animation_controller.get_frame()
@@ -502,7 +500,6 @@ class WorldObject(Widget):
         for world_object in self.world_objects:
             if world_object not in self.world_objects_dict:
                 self.world_objects_dict[world_object] = dict()
-                print world_object.collected
                 with self.canvas:
                     PushMatrix()
                     self.world_objects_dict[world_object]['translate'] = Translate()
@@ -558,7 +555,7 @@ class Platform(object):
             for c in range(self.c):
                 if (r,c) in texture_sources.keys() and os.path.basename(texture_sources[(r,c)]) in self.walkable_textures: hs.append(tile_size[1] * (c+1))
             self.platform_heights.append(hs)
-        print self.platform_heights
+        # print self.platform_heights
 
         self.goldcoin = ScoringObject()
         self.confined_enemy = Enemy()
@@ -615,7 +612,7 @@ class ScrollingForeground(Widget):
             if last_height is None: last_height = 0
             start_height = last_height + random.randint(-self.lines[line_num]['platform_max_y_change'], self.lines[line_num]['platform_max_y_change'])
             if start_height < self.lines[line_num]['min_height']: 
-                print "too small", self.lines[line_num]['min_height']
+                # print "too small", self.lines[line_num]['min_height']
                 start_height = self.lines[line_num]['min_height']
             if start_height > self.lines[line_num]['max_height']: start_height = self.lines[line_num]['max_height']
             self.platforms.append(self._create_scaffold(line_num, start_height = start_height))
@@ -635,7 +632,7 @@ class ScrollingForeground(Widget):
                     'mplatwithpost-right-1', 'mplatnopost-1', 'mplatwithpost-left-1'][position-1] + '.png'
 
     def _create_scaffold(self, line, start_height = 0):
-        print "creating scaffold with start height", start_height
+        # print "creating scaffold with start height", start_height
         prefix = 'media/art/platforms/scaffolding-'
         
         # first create list of heights so we know what to build
@@ -653,7 +650,7 @@ class ScrollingForeground(Widget):
             else:
                 # stay at the same level
                 pass
-        print "heights", heights, h
+        # print "heights", heights, h
 
         # make 20% of the levels underneath the top level also walkable
         last_level = max(heights)
@@ -662,7 +659,7 @@ class ScrollingForeground(Widget):
             if last_level - h > 2 and h >= 2 and random.random() < .4: 
                 last_level = h
                 walkable_levels.append(h)
-        print "walk", walkable_levels
+        # print "walk", walkable_levels
 
         # now actually build the scaffolding
         tile_dict = {}
@@ -712,7 +709,7 @@ class ScrollingForeground(Widget):
                         else:
                             position = 3  
                     tile_dict[t] = self._get_tile_name(prefix, position, corner = corner)
-        print tile_dict
+        # print tile_dict
 
         platform = Platform(tile_dict, platform_type = 'scaffold')
         platform.x = Window.size[0]
@@ -722,7 +719,7 @@ class ScrollingForeground(Widget):
         return platform
 
     def _signal_platform_on_screen(self, platform):
-        print "PLATFORM COMPLETE"
+        # print "PLATFORM COMPLETE"
         if platform.orphan:
             return
         interval = random.triangular(self.lines[platform.line]['min_distance'], self.lines[platform.line]['max_distance'],
@@ -735,7 +732,7 @@ class ScrollingForeground(Widget):
         src = {(0,0): 'media/art/platforms/platform1.png'}
         texture_size = CoreImage(src[(0,0)]).texture.size
         for x in range(0, Window.size[0], texture_size[0] - 50):
-            print "creating initial platform at", x
+            # print "creating initial platform at", x
             platform = Platform(src, tile_size = texture_size, platform_type = 'floating')
             platform.x = x
             platform.y = -texture_size[1]*0.5
