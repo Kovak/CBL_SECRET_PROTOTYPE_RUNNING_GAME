@@ -156,16 +156,22 @@ class AnimationController(Widget):
         if anim_name+"_start" in dir(self):
             getattr(self, anim_name+"_start")()
 
-class SoundController(Widget):
+class SoundController(object):
+
+    sound_dir = 'media/sounds/'
 
     def __init__(self, game=None):
         super(SoundController, self).__init__()
     
-    coin_collected_1 = SoundLoader.load('media/sounds/coin_pickup_1.wav')
-    coin_collected_2 = SoundLoader.load('media/sounds/coin_pickup_2.wav')
-    sword_draw = SoundLoader.load('media/sounds/sword_draw.wav')
-    sword_hit_1 = SoundLoader.load('media/sounds/sword_hit1.wav')
-    sword_hit_2= SoundLoader.load('media/sounds/sword_hit2.wav')
+        for f in os.listdir(self.sound_dir):
+            setattr(self, os.path.splitext(os.path.basename(f))[0], SoundLoader.load(os.path.join(self.sound_dir, os.path.basename(f))))
+
+    def play(self, sound_name):
+        try:
+            getattr(self, sound_name).play()
+        except:
+            print "sound",sound_name,"not found in", self.sound_dir
+
 
 
 class PlayerCharacter(Widget):
@@ -239,7 +245,7 @@ class PlayerCharacter(Widget):
             self.is_dropping = True
             self.offensive_move = True
             self.y_velocity = self.drop_velocity
-            self.game.sound_fx.sword_draw.play()
+            self.game.sound_fx.play('sword_draw')
         elif move_name == 'drop-land':
             # get the game clock running back at normal speed again
             anim = Animation(global_speed = 1, duration = .5)
@@ -253,7 +259,7 @@ class PlayerCharacter(Widget):
             anim.start(self.game)
             self.is_dashing = True
             self.offensive_move = True
-            self.game.sound_fx.sword_draw.play()
+            self.game.sound_fx.play('sword_draw')
             Clock.schedule_once(functools.partial(self.exec_move, 'dash-end'), .7)
         elif move_name == 'dash-end':
             self.is_dashing = False
@@ -366,13 +372,13 @@ class ScoreDisplay(Widget):
 
     def coin_collected(self):
         self.score += 10
-        self.game.sound_fx.coin_collected_1.play()
+        self.game.sound_fx.play('coin_pickup_1')
         if self.sound_count == 1:
-            self.game.sound_fx.coin_collected_1.play()
+            self.game.sound_fx.play('coin_pickup_1')
             self.sound_count = 2
             return
         if self.sound_count == 2:
-            self.game.sound_fx.coin_collected_2.play()
+            self.game.sound_fx.play('coin_collected_2')
             self.sound_count = 1
             return
 
@@ -476,11 +482,11 @@ class ConfinedEnemy(Widget):
 
     def play_killed_sound(self):
         if self.sound_count == 1:
-            self.game.sound_fx.sword_hit_1.play()
+            self.game.sound_fx.play('sword_hit1')
             self.sound_count = 2
             return
         if self.sound_count == 2:
-            self.game.sound_fx.sword_hit_2.play()
+            self.game.sound_fx.play('sword_hit2')
             self.sound_count = 1
             return
 
