@@ -42,9 +42,7 @@ class RunningGame(Screen):
         self.foreground = ScrollingForeground(game = self)
         self.midground = ScrollingMidground()
         self.background = ScrollingBackground()
-        self.coin_shimmer = ParticleEffects(game = self)
-        self.dash_particles = ParticleEffects(game = self)
-        self.landing_dust_plume = ParticleEffects(game = self)
+        self.particle_effects = ParticleEffects(game=self)
         self.life_count = LivesDisplay()
         self.score = ScoreDisplay()
         self.confined_enemy = ConfinedEnemy(game = self)
@@ -55,11 +53,9 @@ class RunningGame(Screen):
         self.add_widget(self.score)
         self.add_widget(self.life_count)
         self.add_widget(self.confined_enemy)
-        self.add_widget(self.player_character)
-        self.add_widget(self.coin_shimmer)
         self.add_widget(self.goldcoin)
-        self.add_widget(self.dash_particles)
-        self.add_widget(self.landing_dust_plume)
+        self.add_widget(self.player_character)
+        self.add_widget(self.particle_effects)
         
 
 
@@ -275,6 +271,7 @@ class PlayerCharacter(Widget):
             self.game.life_count.decrease_lives()
 
         if self.game.life_count.lives == 0:
+            self.game.life_count.decrease_lives()
             self.game.manager.current = 'replay'
 
     def _advance_time(self, dt):
@@ -311,12 +308,12 @@ class PlayerCharacter(Widget):
         self.texture, self.size = self.animation_controller.get_frame()
 
         if self.is_dashing == True and not self.has_emitted_dash_particles:
-            self.game.dash_particles.emit_dash_particles(dt, emit_x=self.x, emit_y=self.y)
+            self.game.particle_effects.emit_dash_particles(dt, emit_x=self.x, emit_y=self.y)
             self.has_emitted_dash_particles = True
         if not self.is_dashing and self.has_emitted_dash_particles:
             self.has_emitted_dash_particles = False
         if self.landed == True:
-            self.game.landing_dust_plume.emit_dust_plume(dt, emit_x=self.x, emit_y=self.y)
+            self.game.particle_effects.emit_dust_plume(dt, emit_x=self.x, emit_y=self.y)
             self.landed = False
     
     def _render(self):
@@ -802,7 +799,7 @@ class ScrollingForeground(Widget):
                     platform.goldcoin.active = False
                 else:
                     platform.goldcoin.x = platform.x + platform.size[0]*.5
-                    self.game.coin_shimmer.goldcoin_shimmer(dt, emit_x=platform.goldcoin.x, emit_y=platform.goldcoin.y)
+                    self.game.particle_effects.goldcoin_shimmer(dt, emit_x=platform.goldcoin.x, emit_y=platform.goldcoin.y)
             # set confined enemy x to correspond with its platform
             if platform.confined_enemy.active == True:
                 if platform.confined_enemy.x < -100:
@@ -1079,6 +1076,8 @@ class ReplayScreen(Screen):
         if btn_id == 'quit':
             Window.close()
         elif btn_id == 'new':
+            self.parent.remove_widget(self.manager.get_screen('game'))
+            self.parent.add_widget(RunningGame(name='game'))
             self.manager.current = 'game'
             self.manager.get_screen('game').start()
 
