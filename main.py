@@ -164,6 +164,7 @@ class SoundController(object):
         super(SoundController, self).__init__()
     
         for f in os.listdir(self.sound_dir):
+            if os.path.splitext(os.path.basename(f))[1] != '.wav': continue
             setattr(self, os.path.splitext(os.path.basename(f))[0], SoundLoader.load(os.path.join(self.sound_dir, os.path.basename(f))))
 
     def play(self, sound_name):
