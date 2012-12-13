@@ -16,6 +16,7 @@ from kivy.lang import Builder
 from kivyparticle.engine import *
 from kivy.input.motionevent import MotionEvent
 from kivy.uix.screenmanager import ScreenManager, Screen, FadeTransition
+from kivy.core.audio import SoundLoader
 import functools
 import random
 import os
@@ -225,6 +226,8 @@ class PlayerCharacter(Widget):
             self.is_dropping = True
             self.offensive_move = True
             self.y_velocity = self.drop_velocity
+            sound = SoundLoader.load('media/sounds/sword_draw.wav')
+            sound.play()
         elif move_name == 'drop-land':
             # get the game clock running back at normal speed again
             anim = Animation(global_speed = 1, duration = .5)
@@ -238,6 +241,8 @@ class PlayerCharacter(Widget):
             anim.start(self.game)
             self.is_dashing = True
             self.offensive_move = True
+            sound = SoundLoader.load('media/sounds/sword_draw.wav')
+            sound.play()
             Clock.schedule_once(functools.partial(self.exec_move, 'dash-end'), .7)
         elif move_name == 'dash-end':
             self.is_dashing = False
@@ -348,6 +353,8 @@ class ScoreDisplay(Widget):
 
     def coin_collected(self):
         self.score += 10
+        sound = SoundLoader.load('media/sounds/coin_pickup_1.wav')
+        sound.play()
         # print 'SCORED'
 
 class LivesDisplay(Widget):
@@ -466,6 +473,8 @@ class ConfinedEnemy(Widget):
                 enemy.killed = True
                 enemy.check_health = False
                 self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
+                sound = SoundLoader.load('media/sounds/sword_hit1.wav')
+                sound.play()
                 print 'enemy killed'
             if enemy.outside_range == True:
                 self.enemies.pop(self.enemies.index(enemy))
