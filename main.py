@@ -45,9 +45,10 @@ class RunningGame(Screen):
         self.background = ScrollingBackground()
         self.particle_effects = ParticleEffects(game=self)
         self.life_count = LivesDisplay()
-        self.score = ScoreDisplay()
+        self.score = ScoreDisplay(game = self)
         self.confined_enemy = ConfinedEnemy(game = self)
         self.goldcoin = WorldObject(game = self)
+        self.sound_fx = SoundController(game = self)
         self.add_widget(self.background)
         self.add_widget(self.midground)
         self.add_widget(self.foreground)
@@ -155,6 +156,18 @@ class AnimationController(Widget):
         if anim_name+"_start" in dir(self):
             getattr(self, anim_name+"_start")()
 
+class SoundController(Widget):
+
+    def __init__(self, game=None):
+        super(SoundController, self).__init__()
+    
+    coin_collected_1 = SoundLoader.load('media/sounds/coin_pickup_1.wav')
+    coin_collected_2 = SoundLoader.load('media/sounds/coin_pickup_2.wav')
+    sword_draw = SoundLoader.load('media/sounds/sword_draw.wav')
+    sword_hit_1 = SoundLoader.load('media/sounds/sword_hit1.wav')
+    sword_hit_2= SoundLoader.load('media/sounds/sword_hit2.wav')
+
+
 class PlayerCharacter(Widget):
     isRendered = BooleanProperty(False)
     y_velocity = NumericProperty(0)
@@ -226,8 +239,7 @@ class PlayerCharacter(Widget):
             self.is_dropping = True
             self.offensive_move = True
             self.y_velocity = self.drop_velocity
-            sound = SoundLoader.load('media/sounds/sword_draw.wav')
-            sound.play()
+            self.game.sound_fx.sword_draw.play()
         elif move_name == 'drop-land':
             # get the game clock running back at normal speed again
             anim = Animation(global_speed = 1, duration = .5)
@@ -241,8 +253,7 @@ class PlayerCharacter(Widget):
             anim.start(self.game)
             self.is_dashing = True
             self.offensive_move = True
-            sound = SoundLoader.load('media/sounds/sword_draw.wav')
-            sound.play()
+            self.game.sound_fx.sword_draw.play()
             Clock.schedule_once(functools.partial(self.exec_move, 'dash-end'), .7)
         elif move_name == 'dash-end':
             self.is_dashing = False
@@ -338,6 +349,8 @@ class PlayerCharacter(Widget):
 
 class ScoreDisplay(Widget):
     score = NumericProperty(0)
+    game = ObjectProperty(None)
+    sound_count = NumericProperty(1)
 
     def __init__(self, **kwargs):
         super(ScoreDisplay, self).__init__(**kwargs)
@@ -353,9 +366,15 @@ class ScoreDisplay(Widget):
 
     def coin_collected(self):
         self.score += 10
-        sound = SoundLoader.load('media/sounds/coin_pickup_1.wav')
-        sound.play()
-        # print 'SCORED'
+        self.game.sound_fx.coin_collected_1.play()
+        if self.sound_count == 1:
+            self.game.sound_fx.coin_collected_1.play()
+            self.sound_count = 2
+            return
+        if self.sound_count == 2:
+            self.game.sound_fx.coin_collected_2.play()
+            self.sound_count = 1
+            return
 
 class LivesDisplay(Widget):
     lives = NumericProperty(5)
@@ -382,6 +401,7 @@ class ConfinedEnemy(Widget):
     speed = NumericProperty(200)
     texture = StringProperty(None)
     speed_multiplier = NumericProperty(1)
+    sound_count = NumericProperty(1)
     game = ObjectProperty(None)
 
     def __init__(self, **kwargs):
@@ -454,6 +474,16 @@ class ConfinedEnemy(Widget):
         enemy.animation_controller.set_animation(move_name)
         return enemy
 
+    def play_killed_sound(self):
+        if self.sound_count == 1:
+            self.game.sound_fx.sword_hit_1.play()
+            self.sound_count = 2
+            return
+        if self.sound_count == 2:
+            self.game.sound_fx.sword_hit_2.play()
+            self.sound_count = 1
+            return
+
     def _render(self):
         for enemy in self.enemies:
             if enemy not in self.enemies_dict:
@@ -473,8 +503,7 @@ class ConfinedEnemy(Widget):
                 enemy.killed = True
                 enemy.check_health = False
                 self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
-                sound = SoundLoader.load('media/sounds/sword_hit1.wav')
-                sound.play()
+                self.play_killed_sound()
                 print 'enemy killed'
             if enemy.outside_range == True:
                 self.enemies.pop(self.enemies.index(enemy))
