@@ -175,6 +175,7 @@ class PlayerCharacter(Widget):
     gravity = NumericProperty(300)
 
     is_dashing = False
+    has_emitted_dash_particles = False
 
     offensive_move = BooleanProperty(False)
 
@@ -309,8 +310,11 @@ class PlayerCharacter(Widget):
         #Animation Code:
         self.texture, self.size = self.animation_controller.get_frame()
 
-        if self.is_dashing == True:
+        if self.is_dashing == True and not self.has_emitted_dash_particles:
             self.game.dash_particles.emit_dash_particles(dt, emit_x=self.x, emit_y=self.y)
+            self.has_emitted_dash_particles = True
+        if not self.is_dashing and self.has_emitted_dash_particles:
+            self.has_emitted_dash_particles = False
         if self.landed == True:
             self.game.landing_dust_plume.emit_dust_plume(dt, emit_x=self.x, emit_y=self.y)
             self.landed = False
@@ -863,7 +867,7 @@ class ParticleEffects(Widget):
         self.dash_particles.emitter_y = emit_y
         self.dash_particles.start()
         self.add_widget(self.dash_particles)
-        Clock.schedule_once(self.dash_particles.stop, .7)
+        Clock.schedule_once(self.stop_dash_particles, .7)
 
     def stop_dash_particles(self,dt):
         self.dash_particles.stop(clear=True)
