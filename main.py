@@ -21,6 +21,7 @@ import functools
 import random
 import os
 
+
 def random_variance(base, variance):
     return base + variance * (random.random() * 2.0 - 1.0)
 
@@ -72,6 +73,7 @@ class RunningGame(Screen):
                 if not self.player_character.is_dropping:
                     self.player_character.exec_move("dash")
             elif touch.ud['swipe'] == 'down':
+                self.player_character.drop_plat = True
                 self.player_character.exec_move("drop")
             
     def on_touch_move(self, touch):
@@ -187,6 +189,7 @@ class PlayerCharacter(Widget):
     jump_velocity = NumericProperty(250)
     is_jumping = BooleanProperty(False)
     landed = BooleanProperty(False)
+    drop_plat = BooleanProperty(False)
 
     drop_velocity = NumericProperty(-300)
     is_dropping = BooleanProperty(False)
@@ -246,7 +249,7 @@ class PlayerCharacter(Widget):
             self.is_jumping = False
             self.is_dropping = True
             self.offensive_move = True
-            self.y_velocity = self.drop_velocity
+            self.y_velocity = self.drop_velocity - 200
             self.game.sound_fx.play('sword_draw')
         elif move_name == 'drop-land':
             # get the game clock running back at normal speed again
@@ -262,13 +265,12 @@ class PlayerCharacter(Widget):
             self.is_dashing = True
             self.offensive_move = True
             self.game.sound_fx.play('sword_draw')
-            Clock.schedule_once(functools.partial(self.exec_move, 'dash-end'), .7)
+            Clock.schedule_once(functools.partial(self.exec_move, 'dash-end'), .28)
         elif move_name == 'dash-end':
             self.is_dashing = False
             anim = Animation(global_speed = 1, duration = .1)
             anim.start(self.game)
             self.offensive_move = False
-            
             # as of now dash-end does not have an animation associated with it
             if not self.is_dropping:
                 self.exec_move('walk')
@@ -277,6 +279,14 @@ class PlayerCharacter(Widget):
         elif move_name == 'walk':
             self.is_dropping = False
 
+        elif move_name == 'drop_platform':
+            self.is_dashing = False
+            self.is_dropping = False
+            self.y = self.y - 5
+            self.y_velocity = self.drop_velocity
+            self.exec_move('jump2')
+
+        self.drop_plat = False
         self.animation_controller.set_animation(move_name)
 
     def on_y_velocity(self, instance, value):
@@ -294,6 +304,7 @@ class PlayerCharacter(Widget):
         self.y_velocity = 0
         self.jump_num = 1
         self.is_dropping = False
+        self.is_dashing = False
         self.game.global_speed = 1
         self.exec_move('jump2')
 
@@ -316,6 +327,9 @@ class PlayerCharacter(Widget):
                 self.exec_move('drop-land')
             else:
                 self.exec_move('walk')
+
+        if is_on_ground and 17 <= self.texture.id <= 20 and self.drop_plat == True:
+            self.exec_move('drop_platform')
 
         # player is in the air and not actively jumping
         if not is_on_ground:
@@ -380,13 +394,12 @@ class ScoreDisplay(Widget):
 
     def coin_collected(self):
         self.score += 10
-        self.game.sound_fx.play('coin_pickup_1')
         if self.sound_count == 1:
             self.game.sound_fx.play('coin_pickup_1')
             self.sound_count = 2
             return
         if self.sound_count == 2:
-            self.game.sound_fx.play('coin_collected_2')
+            self.game.sound_fx.play('coin_pickup_2')
             self.sound_count = 1
             return
 
@@ -598,6 +611,7 @@ class Platform(object):
     is_partially_off_screen = True
     end_height = 0
     line = 0
+    earth = False
     # if Platform is an orphan, it will NOT spawn new platforms after it is on the screen.
     orphan = False
     walkable_textures = ['scaffolding-cplat-left-1.png', 'scaffolding-cplat-right-1.png', 'scaffolding-cplat-right-2.png', 
@@ -632,8 +646,7 @@ class Platform(object):
 class ScrollingForeground(Widget):
     speed = NumericProperty(200)
     speed_multiplier = NumericProperty(1)
-    # initial_platforms = NumericProperty(0)
-    # current_platform_x = NumericProperty(0)
+    
     
     # size of tiles used for scaffolding
     tile_size = (64,64)
@@ -831,6 +844,7 @@ class ScrollingForeground(Widget):
             platform.confined_enemy = self.game.confined_enemy.create_enemy(plat_y = platform.y + platform.size[1]*1.5, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
         if platform.size[0] < 200:
             platform.goldcoin = self.game.goldcoin.create_world_object(obj_type='goldcoin', plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
+        platform.earth = True
         return platform
 
     def _update(self, dt):
