@@ -69,7 +69,8 @@ class RunningGame(Screen):
             if touch.ud['swipe'] == 'up':
                 self.player_character.exec_move("jump1")
             elif touch.ud['swipe'] == 'right':
-                self.player_character.exec_move("dash")
+                if not self.player_character.is_dropping:
+                    self.player_character.exec_move("dash")
             elif touch.ud['swipe'] == 'down':
                 self.player_character.exec_move("drop")
             
@@ -210,7 +211,6 @@ class PlayerCharacter(Widget):
         self.animation_controller = AnimationController('char1', 'walk')
         Clock.schedule_once(self._update)
 
-
     def _update(self, dt):
         self._advance_time(dt)
         self._render()
@@ -229,7 +229,6 @@ class PlayerCharacter(Widget):
                         return True
         return False
 
-
     def exec_move(self, move_name, *largs):
         # move-specific code that is NOT animation related goes here (for example, physics)
         if move_name == 'jump1':
@@ -241,6 +240,7 @@ class PlayerCharacter(Widget):
         elif move_name == 'drop':
             # you can only drop from a jump
             if self.jump_num == 0: return
+            if self.is_dashing: return
             anim = Animation(global_speed = .3, duration = .2)
             anim.start(self.game)
             self.is_jumping = False
@@ -252,7 +252,7 @@ class PlayerCharacter(Widget):
             # get the game clock running back at normal speed again
             anim = Animation(global_speed = 1, duration = .5)
             anim.start(self.game)
-            self.is_dropping = False
+            # self.is_dropping = False
             self.landed = True
             self.offensive_move = False
             Clock.schedule_once(functools.partial(self.exec_move, 'walk'), .3)
@@ -268,10 +268,14 @@ class PlayerCharacter(Widget):
             anim = Animation(global_speed = 1, duration = .1)
             anim.start(self.game)
             self.offensive_move = False
+            
             # as of now dash-end does not have an animation associated with it
-            self.exec_move('walk')
+            if not self.is_dropping:
+                self.exec_move('walk')
             return
-
+        
+        elif move_name == 'walk':
+            self.is_dropping = False
 
         self.animation_controller.set_animation(move_name)
 
@@ -288,8 +292,10 @@ class PlayerCharacter(Widget):
     def die(self):
         self.y = Window.height *.5
         self.y_velocity = 0
+        self.jump_num = 1
+        self.is_dropping = False
         self.game.global_speed = 1
-        # self.down_dash_active = False
+        self.exec_move('jump2')
 
         if self.game.life_count.lives > 0:
             self.game.life_count.decrease_lives()
