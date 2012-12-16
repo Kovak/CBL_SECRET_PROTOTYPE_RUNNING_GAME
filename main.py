@@ -71,7 +71,11 @@ class RunningGame(Screen):
                 self.player_character.exec_move("jump1")
             elif touch.ud['swipe'] == 'right':
                 if not self.player_character.is_dropping and self.player_character.is_dashing == False:
-                    self.player_character.exec_move("dash")
+                    if self.player_character.dash_set:
+                        self.player_character.exec_move("dash")
+                    if not self.player_character.dash_set and self.player_character.jump_dash == False:
+                        self.player_character.exec_move("dash")
+                        self.player_character.jump_dash = True
             elif touch.ud['swipe'] == 'down':
                 self.player_character.drop_plat = True
                 self.player_character.exec_move("drop")
@@ -183,7 +187,7 @@ class PlayerCharacter(Widget):
     isRendered = BooleanProperty(False)
     y_velocity = NumericProperty(0)
     oyv = 0
-
+    is_on_ground = BooleanProperty(False)
     jump_num = NumericProperty(0)
     max_jumps = NumericProperty(2)
     jump_velocity = NumericProperty(250)
@@ -192,6 +196,8 @@ class PlayerCharacter(Widget):
     drop_plat = BooleanProperty(False)
     current_plat_height = NumericProperty(0)
     dash_time_count = NumericProperty(0)
+    jump_dash = BooleanProperty(False)
+    dash_set = BooleanProperty(False)
 
     drop_velocity = NumericProperty(-300)
     is_dropping = BooleanProperty(False)
@@ -329,9 +335,11 @@ class PlayerCharacter(Widget):
 
     def _advance_time(self, dt):
         is_on_ground = self._check_collision()
+        self.dash_set = is_on_ground
 
         # player was falling down and landed:
         if is_on_ground and self.y_velocity < 0:
+            self.jump_dash = False
             self.y_velocity = 0
             self.jump_num = 0
             self.is_jumping = False
