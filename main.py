@@ -966,6 +966,8 @@ class ScrollingMidground(Widget):
         self.midelements.append('media/art/midground_objects/testhill.png')
         self.midelements.append('media/art/midground_objects/testhill2.png')
         self.midelements.append('media/art/midground_objects/testhouse.png')
+        self.midelements.append('media/art/midground_objects/cherrytree1.png')
+        self.midelements.append('media/art/midground_objects/tree1.png')
         self.midgrounds = list()
         self.midground_dict = dict()
         Clock.schedule_once(self._init_midground)
@@ -982,7 +984,7 @@ class ScrollingMidground(Widget):
 
     def _create_midground(self):
         midground = ScrollImage()
-        rand_midground = random.randint(0, 3)
+        rand_midground = random.randint(0, 5)
         midground.texture = self.midelements[rand_midground]
         texture = Image(source = self.midelements[rand_midground])
         midground.spacing = random.randint(0, 500)
