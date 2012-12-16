@@ -70,7 +70,7 @@ class RunningGame(Screen):
             if touch.ud['swipe'] == 'up':
                 self.player_character.exec_move("jump1")
             elif touch.ud['swipe'] == 'right':
-                if not self.player_character.is_dropping:
+                if not self.player_character.is_dropping and self.player_character.is_dashing == False:
                     self.player_character.exec_move("dash")
             elif touch.ud['swipe'] == 'down':
                 self.player_character.drop_plat = True
@@ -191,6 +191,7 @@ class PlayerCharacter(Widget):
     landed = BooleanProperty(False)
     drop_plat = BooleanProperty(False)
     current_plat_height = NumericProperty(0)
+    dash_time_count = NumericProperty(0)
 
     drop_velocity = NumericProperty(-300)
     is_dropping = BooleanProperty(False)
@@ -241,6 +242,7 @@ class PlayerCharacter(Widget):
             self.jump_num += 1
             self.is_jumping = True
             self.offensive_move = False
+            
             self.y_velocity += self.jump_velocity
         elif move_name == 'drop':
             # you can only drop from a jump
@@ -259,33 +261,39 @@ class PlayerCharacter(Widget):
             anim.start(self.game)
             # self.is_dropping = False
             self.landed = True
+            self.is_jumping = False
             self.offensive_move = False
+            
             Clock.schedule_once(functools.partial(self.exec_move, 'walk'), .3)
         elif move_name == 'dash':
             anim = Animation(global_speed = 3, duration = .1)
             anim.start(self.game)
             self.is_dashing = True
             self.offensive_move = True
+            self.is_jumping = False
             self.game.sound_fx.play('sword_draw')
             Clock.schedule_once(functools.partial(self.exec_move, 'dash-end'), .28)
         elif move_name == 'dash-end':
-            self.is_dashing = False
             anim = Animation(global_speed = 1, duration = .1)
             anim.start(self.game)
             self.offensive_move = False
             self.drop_plat = False
+            self.is_jumping = False
             # as of now dash-end does not have an animation associated with it
             if not self.is_dropping:
                 self.exec_move('walk')
             return
         
         elif move_name == 'walk':
+            
             self.is_dropping = False
             self.drop_plat = False
+            self.is_jumping = False
 
         elif move_name == 'drop_platform':
-            self.is_dashing = False
+            
             self.is_dropping = False
+            self.is_jumping = False
             self.y = self.y - 5
             self.y_velocity = self.drop_velocity
             self.exec_move('jump2')
@@ -308,6 +316,7 @@ class PlayerCharacter(Widget):
         self.jump_num = 1
         self.is_dropping = False
         self.is_dashing = False
+        self.dash_time_count = 0
         self.game.global_speed = 1
         self.exec_move('jump2')
 
@@ -351,6 +360,12 @@ class PlayerCharacter(Widget):
         if self.y < 0 - self.size[0]:
             self.die()
 
+        if self.is_dashing == True:
+            self.dash_time_count += 1
+            if self.dash_time_count == 28:
+                self.dash_time_count = 0
+                self.is_dashing = False
+
         #Animation Code:
         self.texture, self.size = self.animation_controller.get_frame()
 
@@ -360,6 +375,8 @@ class PlayerCharacter(Widget):
         if not self.is_dashing and self.has_emitted_dash_particles:
             self.has_emitted_dash_particles = False
         if self.landed == True:
+            if self.game.particle_effects.dust_plume_emitting == True:
+                self.game.particle_effects.stop_dust_plume(dt)
             self.game.particle_effects.emit_dust_plume(dt, emit_x=self.x, emit_y=self.y)
             self.landed = False
     
@@ -912,6 +929,8 @@ class ScrollingForeground(Widget):
 class ParticleEffects(Widget):
     landing_dust = ObjectProperty(ParticleSystem)
     shoot_fire = ObjectProperty(ParticleSystem)
+    dust_plume = ObjectProperty(ParticleSystem)
+    dust_plume_emitting = BooleanProperty(False)
     game = ObjectProperty(None)
 
     def emit_dust_plume(self, dt, emit_x, emit_y, name = 'ParticleEffects/game_effects/hhs-dirtplume.pex'):
@@ -919,10 +938,12 @@ class ParticleEffects(Widget):
         self.dust_plume.emitter_x = emit_x + 32
         self.dust_plume.emitter_y = emit_y
         self.dust_plume.start()
+        self.dust_plume_emitting = True
         self.add_widget(self.dust_plume)
-        Clock.schedule_once(self.stop_dust_plume, 1.0)
+        Clock.schedule_once(self.stop_dust_plume, .9)
 
     def stop_dust_plume(self,dt):
+        self.dust_plume_emitting = False
         self.dust_plume.stop(clear=True)
         self.remove_widget(self.dust_plume)
         
@@ -933,7 +954,7 @@ class ParticleEffects(Widget):
         self.dash_particles.emitter_y = emit_y
         self.dash_particles.start()
         self.add_widget(self.dash_particles)
-        Clock.schedule_once(self.stop_dash_particles, .7)
+        Clock.schedule_once(self.stop_dash_particles, .5)
 
     def stop_dash_particles(self,dt):
         self.dash_particles.stop(clear=True)
