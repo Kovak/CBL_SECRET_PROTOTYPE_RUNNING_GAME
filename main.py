@@ -896,7 +896,7 @@ class ScrollingForeground(Widget):
                     platform.confined_enemy.max = platform.x + platform.size[0]
                     platform.confined_enemy = self.game.confined_enemy.animate_con_enemy(enemy=platform.confined_enemy, plat_x=platform.x, scroll_multiplier=scroll_multiplier)
 
-            if platform.x < -platform.size[0]:
+            if platform.x < -platform.size[0]*1.25:
                 self.platforms.pop(self.platforms.index(platform))
             elif platform.is_partially_off_screen and platform.x + platform.size[0] < Window.size[0]:
                 self._signal_platform_on_screen(platform)
