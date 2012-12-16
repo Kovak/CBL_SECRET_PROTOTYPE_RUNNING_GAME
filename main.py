@@ -190,6 +190,7 @@ class PlayerCharacter(Widget):
     is_jumping = BooleanProperty(False)
     landed = BooleanProperty(False)
     drop_plat = BooleanProperty(False)
+    current_plat_height = NumericProperty(0)
 
     drop_velocity = NumericProperty(-300)
     is_dropping = BooleanProperty(False)
@@ -229,6 +230,7 @@ class PlayerCharacter(Widget):
                      if abs(self.y - (each.y + h)) < 10:
                         self.y = each.y + h
                         each.confined_enemy.attack_command = True
+                        self.current_plat_height = h
                         return True
         return False
 
@@ -271,6 +273,7 @@ class PlayerCharacter(Widget):
             anim = Animation(global_speed = 1, duration = .1)
             anim.start(self.game)
             self.offensive_move = False
+            self.drop_plat = False
             # as of now dash-end does not have an animation associated with it
             if not self.is_dropping:
                 self.exec_move('walk')
@@ -278,6 +281,7 @@ class PlayerCharacter(Widget):
         
         elif move_name == 'walk':
             self.is_dropping = False
+            self.drop_plat = False
 
         elif move_name == 'drop_platform':
             self.is_dashing = False
@@ -328,7 +332,7 @@ class PlayerCharacter(Widget):
             else:
                 self.exec_move('walk')
 
-        if is_on_ground and 17 <= self.texture.id <= 20 and self.drop_plat == True:
+        if is_on_ground and 17 <= self.texture.id <= 20 and self.drop_plat == True and self.current_plat_height > 150:
             self.exec_move('drop_platform')
 
         # player is in the air and not actively jumping
