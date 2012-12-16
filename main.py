@@ -290,7 +290,6 @@ class PlayerCharacter(Widget):
             self.y_velocity = self.drop_velocity
             self.exec_move('jump2')
 
-        self.drop_plat = False
         self.animation_controller.set_animation(move_name)
 
     def on_y_velocity(self, instance, value):
@@ -432,7 +431,6 @@ class ConfinedEnemy(Widget):
     speed = NumericProperty(200)
     texture = StringProperty(None)
     speed_multiplier = NumericProperty(1)
-    sound_count = NumericProperty(1)
     game = ObjectProperty(None)
 
     def __init__(self, **kwargs):
@@ -505,14 +503,12 @@ class ConfinedEnemy(Widget):
         enemy.animation_controller.set_animation(move_name)
         return enemy
 
-    def play_killed_sound(self):
-        if self.sound_count == 1:
+    def play_killed_sound(self, hit_sound):
+        if hit_sound == 1:
             self.game.sound_fx.play('sword_hit1')
-            self.sound_count = 2
             return
-        if self.sound_count == 2:
+        if hit_sound == 2:
             self.game.sound_fx.play('sword_hit2')
-            self.sound_count = 1
             return
 
     def _render(self):
@@ -530,11 +526,14 @@ class ConfinedEnemy(Widget):
             if self.game.player_character.collide_widget(enemy) == True and self.game.player_character.offensive_move == False and enemy.killed == False and abs(enemy.x - self.game.player_character.x) < 50 and abs(enemy.y - self.game.player_character.y) < 100 and enemy.killed_player == False:
                 self.game.player_character.die()
                 enemy.killed_player = True
-            if self.game.player_character.collide_widget(enemy) == True and self.game.player_character.offensive_move == True and enemy.check_health == True and self.game.player_character.x - enemy.x < 60 and abs(enemy.y - self.game.player_character.y) < 150:
-                enemy.killed = True
-                enemy.check_health = False
-                self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
-                self.play_killed_sound()
+            if self.game.player_character.collide_widget(enemy) == True and enemy.check_health == True and self.game.player_character.x - enemy.x < 60 and abs(enemy.y - self.game.player_character.y) < 150:
+                if self.game.player_character.offensive_move == True:
+                    enemy.killed = True
+                    enemy.check_health = False
+                    self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
+                    self.play_killed_sound(1)
+                if self.game.player_character.offensive_move == False:
+                    self.play_killed_sound(2)
                 print 'enemy killed'
             if enemy.outside_range == True:
                 self.enemies.pop(self.enemies.index(enemy))
