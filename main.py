@@ -4,6 +4,8 @@ from kivy.base import EventLoop
 from kivy.factory import Factory
 from kivy.animation import Animation
 from kivy.uix.widget import Widget
+from kivy.uix.textinput import TextInput
+from kivy.uix.popup import Popup
 from kivy.graphics.texture import Texture
 from kivy.core.window import Window
 from kivy.uix.image import Image
@@ -11,13 +13,13 @@ from kivy.core.image import Image as CoreImage
 from kivy.uix.button import Button
 from kivy.clock import Clock
 from kivy.graphics import Rectangle, Color, Callback, Rotate, PushMatrix, PopMatrix, Translate, Quad
-from kivy.properties import NumericProperty, StringProperty, ObjectProperty, BooleanProperty
+from kivy.properties import NumericProperty, StringProperty, ObjectProperty, BooleanProperty, ListProperty
 from kivy.lang import Builder
 from kivyparticle.engine import *
 from kivy.input.motionevent import MotionEvent
 from kivy.uix.screenmanager import ScreenManager, Screen, FadeTransition
 from kivy.core.audio import SoundLoader
-import functools
+from functools import partial
 import random
 import os
 
@@ -260,14 +262,14 @@ class PlayerCharacter(Widget):
             # self.is_dropping = False
             self.landed = True
             self.offensive_move = False
-            Clock.schedule_once(functools.partial(self.exec_move, 'walk'), .3)
+            Clock.schedule_once(partial(self.exec_move, 'walk'), .3)
         elif move_name == 'dash':
             anim = Animation(global_speed = 3, duration = .1)
             anim.start(self.game)
             self.is_dashing = True
             self.offensive_move = True
             self.game.sound_fx.play('sword_draw')
-            Clock.schedule_once(functools.partial(self.exec_move, 'dash-end'), .28)
+            Clock.schedule_once(partial(self.exec_move, 'dash-end'), .28)
         elif move_name == 'dash-end':
             self.is_dashing = False
             anim = Animation(global_speed = 1, duration = .1)
@@ -296,7 +298,7 @@ class PlayerCharacter(Widget):
     def on_y_velocity(self, instance, value):
         # watches for the point where player hits the apex of his parabola so that we can change animations
         # if character is not jumping, we don't care about y_velocity and who likes running extra python code? not my crappy tablet!
-        if self.jump_num == 0: return
+        # if self.jump_num == 0: return
         # but if velocity used to be positive and now it's negative, execute the jump2 move
         if self.oyv > 0 and value <= 0:
             self.is_jumping = False
@@ -312,12 +314,16 @@ class PlayerCharacter(Widget):
         self.game.global_speed = 1
         self.exec_move('jump2')
 
-        if self.game.life_count.lives > 0:
-            self.game.life_count.decrease_lives()
-
+        self.game.life_count.decrease_lives()
         if self.game.life_count.lives == 0:
-            self.game.life_count.decrease_lives()
-            self.game.manager.current = 'replay'
+            self.lose()
+
+    def lose(self):
+
+
+
+        self.game.manager.get_screen('replay').game_score = self.game.score.score
+        self.game.manager.current = 'replay'
 
     def _advance_time(self, dt):
         is_on_ground = self._check_collision()
@@ -687,8 +693,8 @@ class ScrollingForeground(Widget):
         super(ScrollingForeground, self).__init__(**kwargs)
         self.platforms = list()
         self.platforms_dict = dict()
-        Clock.schedule_once(functools.partial(self._init_platform, 0, None))
-        Clock.schedule_once(functools.partial(self._init_platform, 1, None))
+        Clock.schedule_once(partial(self._init_platform, 0, None))
+        Clock.schedule_once(partial(self._init_platform, 1, None))
         self._create_initial_platforms(1)
         Clock.schedule_once(self._update)
 
@@ -812,7 +818,7 @@ class ScrollingForeground(Widget):
                     self.lines[platform.line]['min_distance'] + self.lines[platform.line]['difficulty']*(self.lines[platform.line]['max_distance']
                      - self.lines[platform.line]['min_distance'])) / (self.speed * self.speed_multiplier)
 
-        Clock.schedule_once(functools.partial(self._init_platform, platform.line, platform.end_height), interval)
+        Clock.schedule_once(partial(self._init_platform, platform.line, platform.end_height), interval)
 
     def _create_initial_platforms(self, line):
         src = {(0,0): 'media/art/platforms/platform1.png'}
@@ -1138,11 +1144,63 @@ class MenuScreen(Screen):
             self.manager.current = 'game'
             self.manager.get_screen('game').start()
 
+class GetNameInput(Widget):
+    
+    ok = BooleanProperty(False)
+    text = StringProperty("Please enter your name.")
+
 class ReplayScreen(Screen):
     foreground = ObjectProperty(None)
+    hi_scores_list = ListProperty([("-", "0")]*5)
+    game_score = 0
 
     def __init__(self, **kwargs):
         super(ReplayScreen, self).__init__(**kwargs)
+
+    def on_transition_state(self, instance, value):
+        if value != 'in':
+            return
+
+        self.hi_scores_from_file = []
+        try:
+            with open('hi_scores', 'r') as hi_score_file:
+                for line in hi_score_file:
+                    if line.strip() == '': continue
+                    ls = [x.strip() for x in line.split(':')]
+                    self.hi_scores_from_file.append([ls[0], float(ls[1])])
+        except IOError:
+            pass
+
+        self.update_hi_score_display()
+        
+
+        # now test if the user's score is over min(self.hi_scores_from_file)
+        if self.game_score >= min([float(t[1]) for t in self.hi_scores_list]):
+            self.get_name_widget = GetNameInput()
+            popup = Popup(title='Congratulations!', content = self.get_name_widget, size_hint=(.4,.4))
+            self.get_name_widget.bind(ok = popup.dismiss)
+            popup.bind(on_dismiss = self.get_name_popup_closed)
+            popup.open()
+    
+    def get_name_popup_closed(self, *largs):
+        print self.get_name_widget.text 
+        if self.get_name_widget.text == "Please enter your name.": return
+        if len(self.hi_scores_from_file) == 5:
+            self.hi_scores_from_file = sorted([[self.get_name_widget.text, self.game_score]] + sorted(self.hi_scores_from_file, key=lambda t: t[1])[1:], key=lambda t: t[1], reverse=True)
+        else:
+            self.hi_scores_from_file = sorted([[self.get_name_widget.text, self.game_score]] + sorted(self.hi_scores_from_file, key=lambda t: t[1]), key=lambda t: t[1], reverse=True)
+        
+        self.update_hi_score_display()
+        self.write_hi_scores_to_file()
+
+    def update_hi_score_display(self):
+        for idx, score in enumerate(sorted(self.hi_scores_from_file, key=lambda t: t[1], reverse=True)):
+            self.hi_scores_list[idx] = (score[0], str(int(score[1])))
+
+    def write_hi_scores_to_file(self):
+        with open('hi_scores', 'w') as hi_score_file:
+            for line in self.hi_scores_list:
+                hi_score_file.write(line[0]+ ": " + str(line[1]) + '\n')
 
     def button_callback(self, btn_id):
         if btn_id == 'quit':
