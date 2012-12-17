@@ -175,6 +175,12 @@ class AnimationController(Widget):
         if char_name == 'goldcoin':
             search_dir = os.path.join(self.collectible_directory, char_name)
             self.active_dir = self.collectible_directory
+        if char_name == 'redcoin':
+            search_dir = os.path.join(self.collectible_directory, char_name)
+            self.active_dir = self.collectible_directory
+        if char_name == 'bluecoin':
+            search_dir = os.path.join(self.collectible_directory, char_name)
+            self.active_dir = self.collectible_directory
         if char_name == 'mechaspiderturtle':
             search_dir = os.path.join(self.conf_enemy_dir, char_name)
             self.active_dir = self.conf_enemy_dir
@@ -312,7 +318,7 @@ class PlayerCharacter(Widget):
             # you can only drop from a jump
             if self.jump_num == 0: return
             if self.is_dashing: return
-            anim = Animation(global_speed = .3, duration = .2)
+            anim = Animation(global_speed = .3 * self.game.score.global_speed_multiplier, duration = .2)
             anim.start(self.game)
             self.is_jumping = False
             self.is_dropping = True
@@ -322,7 +328,7 @@ class PlayerCharacter(Widget):
             log.log_event('drop')
         elif move_name == 'drop-land':
             # get the game clock running back at normal speed again
-            anim = Animation(global_speed = 1, duration = .5)
+            anim = Animation(global_speed = 1 * self.game.score.global_speed_multiplier, duration = .5)
             anim.start(self.game)
             # self.is_dropping = False
             self.landed = True
@@ -330,7 +336,7 @@ class PlayerCharacter(Widget):
             self.offensive_move = False
             Clock.schedule_once(partial(self.exec_move, 'walk'), .3)
         elif move_name == 'dash':
-            anim = Animation(global_speed = 3, duration = .1)
+            anim = Animation(global_speed = 3 * self.game.score.global_speed_multiplier, duration = .1)
             anim.start(self.game)
             self.is_dashing = True
             self.offensive_move = True
@@ -339,7 +345,7 @@ class PlayerCharacter(Widget):
             Clock.schedule_once(partial(self.exec_move, 'dash-end'), .28)
             log.log_event('dash')
         elif move_name == 'dash-end':
-            anim = Animation(global_speed = 1, duration = .1)
+            anim = Animation(global_speed = 1 * self.game.score.global_speed_multiplier, duration = .1)
             anim.start(self.game)
             self.offensive_move = False
             self.drop_plat = False
@@ -387,6 +393,8 @@ class PlayerCharacter(Widget):
         self.dash_time_count = 0
         self.game.global_speed = 1
         self.exec_move('jump2')
+        self.game.score.global_speed_multiplier = 1
+        self.game.score.score_multiplier = 1
 
         self.game.life_count.decrease_lives()
         if self.game.life_count.lives == 0:
@@ -474,6 +482,8 @@ class ScoreDisplay(Widget):
     score = NumericProperty(0)
     game = ObjectProperty(None)
     sound_count = NumericProperty(1)
+    global_speed_multiplier = NumericProperty(1)
+    score_multiplier = NumericProperty(1)
 
     def __init__(self, **kwargs):
         super(ScoreDisplay, self).__init__(**kwargs)
@@ -487,20 +497,20 @@ class ScoreDisplay(Widget):
     def increase_score(self, dt):
         self.score += 1
 
-<<<<<<< HEAD
     def coin_collected(self, coin_type):
-        if coin_type == 'goldcoin':
-            self.score += 10
-            print 'GOLD'
-        if coin_type == 'redcoin':
-            print 'RED'
-        if coin_type == 'bluecoin':
-            print 'BLUE'
-=======
-    def coin_collected(self):
-        self.score += 10
         log.log_event('coin_collected')
->>>>>>> b4e014d09dfaf3ba975ec3e2727167d4842b30a7
+        if coin_type == 'goldcoin':
+            self.score += int(10 * self.score_multiplier)
+        if coin_type == 'redcoin':
+            if self.global_speed_multiplier < 2:
+                self.global_speed_multiplier += .2
+                self.game.global_speed = 1 * self.global_speed_multiplier
+                self.score_multiplier += .4
+        if coin_type == 'bluecoin':
+            if self.global_speed_multiplier > .6:
+                self.global_speed_multiplier -= .2
+                self.game.global_speed = 1 * self.global_speed_multiplier
+                self.score_multiplier -= .4
         if self.sound_count == 1:
             self.game.sound_fx.play('coin_pickup_1')
             self.sound_count = 2
@@ -676,30 +686,22 @@ class WorldObject(Widget):
         world_object.active = True
         world_object.outside_range = False
         world_object.type = obj_type
+        print 'initiated', obj_type
 
-        if obj_type == 'goldcoin':
+        if world_object.type == 'goldcoin':
             world_object.animation_controller = AnimationController('goldcoin', 'resting')
-            world_object.texture = world_object.animation_controller.textures[world_object.animation_controller.active_texture_index]
-            world_object.texture, world_object.size = world_object.animation_controller.get_frame()
-            world_object.right = world_object.x + world_object.size[0] * .5
-            world_object.top = world_object.y + world_object.size[1] * .5
-            self.game.goldcoin.world_objects.append(world_object)
 
-        elif obj_type == 'redcoin':
+        elif world_object.type == 'redcoin':
             world_object.animation_controller = AnimationController('redcoin', 'resting')
-            world_object.texture = world_object.animation_controller.textures[world_object.animation_controller.active_texture_index]
-            world_object.texture, world_object.size = world_object.animation_controller.get_frame()
-            world_object.right = world_object.x + world_object.size[0] * .5
-            world_object.top = world_object.y + world_object.size[1] * .5
-            self.game.goldcoin.world_objects.append(world_object)
 
-        elif obj_type == 'bluecoin':
+        elif world_object.type == 'bluecoin':
             world_object.animation_controller = AnimationController('bluecoin', 'resting')
-            world_object.texture = world_object.animation_controller.textures[world_object.animation_controller.active_texture_index]
-            world_object.texture, world_object.size = world_object.animation_controller.get_frame()
-            world_object.right = world_object.x + world_object.size[0] * .5
-            world_object.top = world_object.y + world_object.size[1] * .5
-            self.game.goldcoin.world_objects.append(world_object)
+            
+        world_object.texture = world_object.animation_controller.textures[world_object.animation_controller.active_texture_index]
+        world_object.texture, world_object.size = world_object.animation_controller.get_frame()
+        world_object.right = world_object.x + world_object.size[0] * .5
+        world_object.top = world_object.y + world_object.size[1] * .5
+        self.game.goldcoin.world_objects.append(world_object)
             
         return world_object
 
@@ -716,10 +718,6 @@ class WorldObject(Widget):
                         -world_object.size[0] * 0.5,  world_object.size[1] * 0.5))    
                     self.world_objects_dict[world_object]['translate'].xy = (world_object.x, world_object.y)
                     PopMatrix()
-                    if world_object.type == 'redcoin':
-                        Color(1,0,0)
-                    if world_object.type == 'bluecoin':
-                        Color(0,0,1)
 
             # controls world object
             if self.game.player_character.collide_widget(world_object) == True and world_object._check_collision == True and abs(world_object.x - self.game.player_character.x) < 55 and abs(world_object.y - self.game.player_character.y) < 70:
