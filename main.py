@@ -56,8 +56,8 @@ class RunningGame(Screen):
         self.add_widget(self.score)
         self.add_widget(self.life_count)
         self.add_widget(self.confined_enemy)
-        self.add_widget(self.goldcoin)
         self.add_widget(self.player_character)
+        self.add_widget(self.goldcoin)
         self.add_widget(self.particle_effects)
         
 
@@ -420,8 +420,14 @@ class ScoreDisplay(Widget):
     def increase_score(self, dt):
         self.score += 1
 
-    def coin_collected(self):
-        self.score += 10
+    def coin_collected(self, coin_type):
+        if coin_type == 'goldcoin':
+            self.score += 10
+            print 'GOLD'
+        if coin_type == 'redcoin':
+            print 'RED'
+        if coin_type == 'bluecoin':
+            print 'BLUE'
         if self.sound_count == 1:
             self.game.sound_fx.play('coin_pickup_1')
             self.sound_count = 2
@@ -603,8 +609,25 @@ class WorldObject(Widget):
             world_object.right = world_object.x + world_object.size[0] * .5
             world_object.top = world_object.y + world_object.size[1] * .5
             self.game.goldcoin.world_objects.append(world_object)
+
+        elif obj_type == 'redcoin':
+            world_object.animation_controller = AnimationController('redcoin', 'resting')
+            world_object.texture = world_object.animation_controller.textures[world_object.animation_controller.active_texture_index]
+            world_object.texture, world_object.size = world_object.animation_controller.get_frame()
+            world_object.right = world_object.x + world_object.size[0] * .5
+            world_object.top = world_object.y + world_object.size[1] * .5
+            self.game.goldcoin.world_objects.append(world_object)
+
+        elif obj_type == 'bluecoin':
+            world_object.animation_controller = AnimationController('bluecoin', 'resting')
+            world_object.texture = world_object.animation_controller.textures[world_object.animation_controller.active_texture_index]
+            world_object.texture, world_object.size = world_object.animation_controller.get_frame()
+            world_object.right = world_object.x + world_object.size[0] * .5
+            world_object.top = world_object.y + world_object.size[1] * .5
+            self.game.goldcoin.world_objects.append(world_object)
             
         return world_object
+
 
     def _render(self):
         for world_object in self.world_objects:
@@ -618,21 +641,24 @@ class WorldObject(Widget):
                         -world_object.size[0] * 0.5,  world_object.size[1] * 0.5))    
                     self.world_objects_dict[world_object]['translate'].xy = (world_object.x, world_object.y)
                     PopMatrix()
+                    if world_object.type == 'redcoin':
+                        Color(1,0,0)
+                    if world_object.type == 'bluecoin':
+                        Color(0,0,1)
 
-            # controls rendering of goldcoin world object
-            if world_object.type == 'goldcoin':
-                if self.game.player_character.collide_widget(world_object) == True and world_object._check_collision == True and abs(world_object.x - self.game.player_character.x) < 45 and abs(world_object.y - self.game.player_character.y) < 70:
-                    world_object.collected = True
-                    world_object._check_collision = False
-                    self.world_objects_dict[world_object]['translate'].xy = (-100, world_object.y)
-                    self.game.score.coin_collected()
-                if world_object.x < -100:
-                    self.world_objects.pop(self.world_objects.index(world_object))
-                elif world_object.collected == False:
-                    self.world_objects_dict[world_object]['translate'].xy = (world_object.x, world_object.y)
-                    world_object.texture, world_object.size = world_object.animation_controller.get_frame()
-                    self.world_objects_dict[world_object]['Quad'].texture = world_object.texture
-                    
+            # controls world object
+            if self.game.player_character.collide_widget(world_object) == True and world_object._check_collision == True and abs(world_object.x - self.game.player_character.x) < 55 and abs(world_object.y - self.game.player_character.y) < 70:
+                world_object.collected = True
+                world_object._check_collision = False
+                self.world_objects_dict[world_object]['translate'].xy = (-100, world_object.y)
+                self.game.score.coin_collected(world_object.type)
+            if world_object.x < -100:
+                self.world_objects.pop(self.world_objects.index(world_object))
+            elif world_object.collected == False:
+                self.world_objects_dict[world_object]['translate'].xy = (world_object.x, world_object.y)
+                world_object.texture, world_object.size = world_object.animation_controller.get_frame()
+                self.world_objects_dict[world_object]['Quad'].texture = world_object.texture
+
 
 class Platform(object):
     x, y = -500, -500
@@ -871,7 +897,13 @@ class ScrollingForeground(Widget):
         if platform.size[0] > 200:
             platform.confined_enemy = self.game.confined_enemy.create_enemy(plat_y = platform.y + platform.size[1]*1.5, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
         if platform.size[0] < 200:
-            platform.goldcoin = self.game.goldcoin.create_world_object(obj_type='goldcoin', plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
+            select_coin = random.randint(1,3)
+            if select_coin == 1:
+                platform.goldcoin = self.game.goldcoin.create_world_object(obj_type='goldcoin', plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
+            elif select_coin == 2:
+                platform.goldcoin = self.game.goldcoin.create_world_object(obj_type='redcoin', plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
+            elif select_coin == 3:
+                platform.goldcoin = self.game.goldcoin.create_world_object(obj_type='bluecoin', plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
         platform.earth = True
         return platform
 

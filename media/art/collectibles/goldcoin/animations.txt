@@ -3,4 +3,3 @@ resting:
 	goldcoin2.png: .25
 	goldcoin3.png: .25
 	goldcoin4.png: .25
-	testcharacter.png: .25
