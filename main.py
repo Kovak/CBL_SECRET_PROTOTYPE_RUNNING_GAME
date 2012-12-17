@@ -18,10 +18,12 @@ from kivy.lang import Builder
 from kivyparticle.engine import *
 from kivy.input.motionevent import MotionEvent
 from kivy.uix.screenmanager import ScreenManager, Screen, FadeTransition
+from kivy.network.urlrequest import UrlRequest
 from kivy.core.audio import SoundLoader
 from functools import partial
 import random
 import os
+import urllib
 
 
 def random_variance(base, variance):
@@ -33,6 +35,30 @@ class DebugPanel(Widget):
     def update_fps(self,dt):
         self.fps = str(int(Clock.get_fps()))
         Clock.schedule_once(self.update_fps)
+
+class Logger(object):
+    active_log = {}
+    server_url = 'http://sleepy-anchorage-4701.herokuapp.com/log?'
+    headers = {'Content-type': 'application/x-www-form-urlencoded',
+          'Accept': 'text/plain',}
+
+    def log_event(self, event_name):
+        try:
+            self.active_log[event_name] += 1
+        except KeyError:
+            self.active_log[event_name] = 1
+
+    def record_data(self, key, val):
+        self.active_log[key] = val
+
+    def send_to_logs(self):
+        params = urllib.urlencode(self.active_log)
+        print 'sending request:', params
+        req = UrlRequest(self.server_url + params, method='GET')
+
+    def clear(self):
+        self.active_log = {}
+
 
 class RunningGame(Screen):
     foreground = ObjectProperty(None)
@@ -244,6 +270,7 @@ class PlayerCharacter(Widget):
             self.is_jumping = True
             self.offensive_move = False
             self.y_velocity += self.jump_velocity
+            log.log_event('jump1')
         elif move_name == 'drop':
             # you can only drop from a jump
             if self.jump_num == 0: return
@@ -255,6 +282,7 @@ class PlayerCharacter(Widget):
             self.offensive_move = True
             self.y_velocity = self.drop_velocity - 200
             self.game.sound_fx.play('sword_draw')
+            log.log_event('drop')
         elif move_name == 'drop-land':
             # get the game clock running back at normal speed again
             anim = Animation(global_speed = 1, duration = .5)
@@ -270,6 +298,7 @@ class PlayerCharacter(Widget):
             self.offensive_move = True
             self.game.sound_fx.play('sword_draw')
             Clock.schedule_once(partial(self.exec_move, 'dash-end'), .28)
+            log.log_event('dash')
         elif move_name == 'dash-end':
             self.is_dashing = False
             anim = Animation(global_speed = 1, duration = .1)
@@ -291,6 +320,7 @@ class PlayerCharacter(Widget):
             self.y = self.y - 5
             self.y_velocity = self.drop_velocity
             self.exec_move('jump2')
+            log.log_event('drop_platform')
 
         self.drop_plat = False
         self.animation_controller.set_animation(move_name)
@@ -356,6 +386,7 @@ class PlayerCharacter(Widget):
         self.y += self.y_velocity * dt
 
         if self.y < 0 - self.size[0]:
+            log.log_event('fell_off')
             self.die()
 
         #Animation Code:
@@ -404,6 +435,7 @@ class ScoreDisplay(Widget):
 
     def coin_collected(self):
         self.score += 10
+        log.log_event('coin_collected')
         if self.sound_count == 1:
             self.game.sound_fx.play('coin_pickup_1')
             self.sound_count = 2
@@ -534,6 +566,7 @@ class ConfinedEnemy(Widget):
                     self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
                     PopMatrix()
             if self.game.player_character.collide_widget(enemy) == True and self.game.player_character.offensive_move == False and enemy.killed == False and abs(enemy.x - self.game.player_character.x) < 50 and abs(enemy.y - self.game.player_character.y) < 100 and enemy.killed_player == False:
+                log.log_event('player_killed_by_enemy')
                 self.game.player_character.die()
                 enemy.killed_player = True
             if self.game.player_character.collide_widget(enemy) == True and self.game.player_character.offensive_move == True and enemy.check_health == True and self.game.player_character.x - enemy.x < 60 and abs(enemy.y - self.game.player_character.y) < 150:
@@ -541,6 +574,7 @@ class ConfinedEnemy(Widget):
                 enemy.check_health = False
                 self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
                 self.play_killed_sound()
+                log.log_event('enemy_killed')
                 print 'enemy killed'
             if enemy.outside_range == True:
                 self.enemies.pop(self.enemies.index(enemy))
@@ -1160,6 +1194,7 @@ class ReplayScreen(Screen):
     def on_transition_state(self, instance, value):
         if value != 'in':
             return
+        log.record_data('game_score', self.game_score)
 
         self.hi_scores_from_file = []
         try:
@@ -1184,7 +1219,11 @@ class ReplayScreen(Screen):
     
     def get_name_popup_closed(self, *largs):
         print self.get_name_widget.text 
+        log.record_data('player_name', self.get_name_widget.text)
+        log.send_to_logs()
+
         if self.get_name_widget.text == "Please enter your name.": return
+
         if len(self.hi_scores_from_file) == 5:
             self.hi_scores_from_file = sorted([[self.get_name_widget.text, self.game_score]] + sorted(self.hi_scores_from_file, key=lambda t: t[1])[1:], key=lambda t: t[1], reverse=True)
         else:
@@ -1206,6 +1245,7 @@ class ReplayScreen(Screen):
         if btn_id == 'quit':
             Window.close()
         elif btn_id == 'new':
+            log.clear()
             self.parent.remove_widget(self.manager.get_screen('game'))
             self.parent.add_widget(RunningGame(name='game'))
             self.manager.current = 'game'
@@ -1219,6 +1259,7 @@ Factory.register('ScrollingBackground', ScrollingBackground)
 Factory.register('ScoreDisplay', ScoreDisplay)
 Factory.register('LivesDisplay', LivesDisplay)
 
+log = Logger()
 
 class RunningGameApp(App):
     def build(self):
