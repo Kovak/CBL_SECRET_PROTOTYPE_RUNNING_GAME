@@ -89,6 +89,12 @@ class RunningGame(Screen):
         self.add_widget(self.particle_effects)
         
 
+    def stop(self, *largs):
+        self.player_character.stop = True
+        for w in [self.player_character, self.foreground, self.midground, self.background, 
+                    self.particle_effects, self.life_count ,self.score, self.confined_enemy, self.goldcoin]:
+            self.remove_widget(w)
+            w = None
 
     def on_touch_up(self, touch):
         if 'swipe' not in touch.ud:
@@ -107,6 +113,9 @@ class RunningGame(Screen):
             elif touch.ud['swipe'] == 'down':
                 self.player_character.drop_plat = True
                 self.player_character.exec_move("drop")
+            # elif touch.ud['swipe'] == 'left':
+            #     self.stop()
+
             
     def on_touch_move(self, touch):
         if touch.y > touch.oy and abs(touch.y - touch.oy) > 20 and abs(touch.y - touch.oy) > abs(touch.x - touch.ox):
@@ -226,6 +235,7 @@ class PlayerCharacter(Widget):
     dash_time_count = NumericProperty(0)
     jump_dash = BooleanProperty(False)
     dash_set = BooleanProperty(False)
+    stop = BooleanProperty(False)
 
     drop_velocity = NumericProperty(-300)
     is_dropping = BooleanProperty(False)
@@ -253,7 +263,7 @@ class PlayerCharacter(Widget):
     def _update(self, dt):
         self._advance_time(dt)
         self._render()
-        Clock.schedule_once(self._update)
+        if not self.stop: Clock.schedule_once(self._update)
 
     def _check_collision(self):
         if self.is_jumping: return False
@@ -364,7 +374,7 @@ class PlayerCharacter(Widget):
     def lose(self):
 
 
-
+        Clock.schedule_once(self.game.stop, .5)
         self.game.manager.get_screen('replay').game_score = self.game.score.score
         self.game.manager.current = 'replay'
 
@@ -595,9 +605,10 @@ class ConfinedEnemy(Widget):
                     enemy.check_health = False
                     self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
                     self.play_killed_sound(1)
+                    log.log_event('enemy_killed')
+                    print 'enemy killed'
                 if self.game.player_character.offensive_move == False:
                     self.play_killed_sound(2)
-                print 'enemy killed'
             if enemy.outside_range == True:
                 self.enemies.pop(self.enemies.index(enemy))
                 print 'ENEMY REMOVED'
