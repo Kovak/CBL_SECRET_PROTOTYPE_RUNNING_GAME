@@ -4,6 +4,8 @@ from kivy.base import EventLoop
 from kivy.factory import Factory
 from kivy.animation import Animation
 from kivy.uix.widget import Widget
+from kivy.uix.textinput import TextInput
+from kivy.uix.popup import Popup
 from kivy.graphics.texture import Texture
 from kivy.core.window import Window
 from kivy.uix.image import Image
@@ -11,15 +13,17 @@ from kivy.core.image import Image as CoreImage
 from kivy.uix.button import Button
 from kivy.clock import Clock
 from kivy.graphics import Rectangle, Color, Callback, Rotate, PushMatrix, PopMatrix, Translate, Quad
-from kivy.properties import NumericProperty, StringProperty, ObjectProperty, BooleanProperty
+from kivy.properties import NumericProperty, StringProperty, ObjectProperty, BooleanProperty, ListProperty
 from kivy.lang import Builder
 from kivyparticle.engine import *
 from kivy.input.motionevent import MotionEvent
 from kivy.uix.screenmanager import ScreenManager, Screen, FadeTransition
+from kivy.network.urlrequest import UrlRequest
 from kivy.core.audio import SoundLoader
-import functools
+from functools import partial
 import random
 import os
+import urllib
 
 
 def random_variance(base, variance):
@@ -27,10 +31,53 @@ def random_variance(base, variance):
 
 class DebugPanel(Widget):
     fps = StringProperty(None)
+    start = True
 
     def update_fps(self,dt):
         self.fps = str(int(Clock.get_fps()))
         Clock.schedule_once(self.update_fps)
+        if self.start: Clock.schedule_once(self.log_fps)
+        self.start = False
+
+    def log_fps(self,dt):
+        log.add_datapoint('fps', float(self.fps))
+        Clock.schedule_once(self.log_fps, 7.5)
+
+class Logger(object):
+    active_log = {}
+    active_log_raw_items = {}
+
+    server_url = 'http://sleepy-anchorage-4701.herokuapp.com/log?'
+    headers = {'Content-type': 'application/x-www-form-urlencoded',
+          'Accept': 'text/plain',}
+
+    def log_event(self, event_name):
+        try:
+            self.active_log[event_name] += 1
+        except KeyError:
+            self.active_log[event_name] = 1
+
+    def record_data(self, key, val):
+        self.active_log[key] = val
+
+    def add_datapoint(self, key, val):
+        # keeps a running average of val
+        try:
+            self.active_log_raw_items[key].append(val)
+        except KeyError:
+            self.active_log_raw_items[key] = [val,]
+
+    def send_to_logs(self):
+        for k in self.active_log_raw_items.keys():
+            self.active_log[k] = sum(self.active_log_raw_items[k])/float(len(self.active_log_raw_items))
+
+        params = urllib.urlencode(self.active_log)
+        print 'sending request:', params
+        req = UrlRequest(self.server_url + params, method='GET')
+
+    def clear(self):
+        self.active_log = {}
+
 
 class RunningGame(Screen):
     foreground = ObjectProperty(None)
@@ -61,6 +108,12 @@ class RunningGame(Screen):
         self.add_widget(self.particle_effects)
         
 
+    def stop(self, *largs):
+        self.player_character.stop = True
+        for w in [self.player_character, self.foreground, self.midground, self.background, 
+                    self.particle_effects, self.life_count ,self.score, self.confined_enemy, self.goldcoin]:
+            self.remove_widget(w)
+            w = None
 
     def on_touch_up(self, touch):
         if 'swipe' not in touch.ud:
@@ -79,6 +132,9 @@ class RunningGame(Screen):
             elif touch.ud['swipe'] == 'down':
                 self.player_character.drop_plat = True
                 self.player_character.exec_move("drop")
+            # elif touch.ud['swipe'] == 'left':
+            #     self.stop()
+
             
     def on_touch_move(self, touch):
         if touch.y > touch.oy and abs(touch.y - touch.oy) > 20 and abs(touch.y - touch.oy) > abs(touch.x - touch.ox):
@@ -198,8 +254,9 @@ class PlayerCharacter(Widget):
     dash_time_count = NumericProperty(0)
     jump_dash = BooleanProperty(False)
     dash_set = BooleanProperty(False)
+    stop = BooleanProperty(False)
 
-    drop_velocity = NumericProperty(-300)
+    drop_velocity = NumericProperty(-500)
     is_dropping = BooleanProperty(False)
 
     gravity = NumericProperty(300)
@@ -225,7 +282,7 @@ class PlayerCharacter(Widget):
     def _update(self, dt):
         self._advance_time(dt)
         self._render()
-        Clock.schedule_once(self._update)
+        if not self.stop: Clock.schedule_once(self._update)
 
     def _check_collision(self):
         if self.is_jumping: return False
@@ -250,6 +307,7 @@ class PlayerCharacter(Widget):
             self.offensive_move = False
             
             self.y_velocity += self.jump_velocity
+            log.log_event('jump1')
         elif move_name == 'drop':
             # you can only drop from a jump
             if self.jump_num == 0: return
@@ -259,8 +317,9 @@ class PlayerCharacter(Widget):
             self.is_jumping = False
             self.is_dropping = True
             self.offensive_move = True
-            self.y_velocity = self.drop_velocity - 200
+            self.y_velocity = self.drop_velocity
             self.game.sound_fx.play('sword_draw')
+            log.log_event('drop')
         elif move_name == 'drop-land':
             # get the game clock running back at normal speed again
             anim = Animation(global_speed = 1, duration = .5)
@@ -269,24 +328,26 @@ class PlayerCharacter(Widget):
             self.landed = True
             self.is_jumping = False
             self.offensive_move = False
-            
-            Clock.schedule_once(functools.partial(self.exec_move, 'walk'), .3)
+            Clock.schedule_once(partial(self.exec_move, 'walk'), .3)
         elif move_name == 'dash':
             anim = Animation(global_speed = 3, duration = .1)
             anim.start(self.game)
             self.is_dashing = True
             self.offensive_move = True
-            self.is_jumping = False
+            # self.is_jumping = False
             self.game.sound_fx.play('sword_draw')
-            Clock.schedule_once(functools.partial(self.exec_move, 'dash-end'), .28)
+            Clock.schedule_once(partial(self.exec_move, 'dash-end'), .28)
+            log.log_event('dash')
         elif move_name == 'dash-end':
             anim = Animation(global_speed = 1, duration = .1)
             anim.start(self.game)
             self.offensive_move = False
             self.drop_plat = False
-            self.is_jumping = False
+            self.is_dashing = False
             # as of now dash-end does not have an animation associated with it
-            if not self.is_dropping:
+            if self.is_dropping or self.is_jumping:
+                self.exec_move('jump2')
+            else:
                 self.exec_move('walk')
             return
         
@@ -303,13 +364,14 @@ class PlayerCharacter(Widget):
             self.y = self.y - 5
             self.y_velocity = self.drop_velocity
             self.exec_move('jump2')
+            log.log_event('drop_platform')
 
         self.animation_controller.set_animation(move_name)
 
     def on_y_velocity(self, instance, value):
         # watches for the point where player hits the apex of his parabola so that we can change animations
         # if character is not jumping, we don't care about y_velocity and who likes running extra python code? not my crappy tablet!
-        if self.jump_num == 0: return
+        # if self.jump_num == 0: return
         # but if velocity used to be positive and now it's negative, execute the jump2 move
         if self.oyv > 0 and value <= 0:
             self.is_jumping = False
@@ -326,12 +388,16 @@ class PlayerCharacter(Widget):
         self.game.global_speed = 1
         self.exec_move('jump2')
 
-        if self.game.life_count.lives > 0:
-            self.game.life_count.decrease_lives()
-
+        self.game.life_count.decrease_lives()
         if self.game.life_count.lives == 0:
-            self.game.life_count.decrease_lives()
-            self.game.manager.current = 'replay'
+            self.lose()
+
+    def lose(self):
+
+
+        Clock.schedule_once(self.game.stop, .5)
+        self.game.manager.get_screen('replay').game_score = self.game.score.score
+        self.game.manager.current = 'replay'
 
     def _advance_time(self, dt):
         is_on_ground = self._check_collision()
@@ -366,13 +432,14 @@ class PlayerCharacter(Widget):
         self.y += self.y_velocity * dt
 
         if self.y < 0 - self.size[0]:
+            log.log_event('fell_off')
             self.die()
 
-        if self.is_dashing == True:
-            self.dash_time_count += 1
-            if self.dash_time_count == 28:
-                self.dash_time_count = 0
-                self.is_dashing = False
+        # if self.is_dashing == True:
+        #     self.dash_time_count += 1
+        #     if self.dash_time_count == 28:
+        #         self.dash_time_count = 0
+        #         self.is_dashing = False
 
         #Animation Code:
         self.texture, self.size = self.animation_controller.get_frame()
@@ -420,6 +487,7 @@ class ScoreDisplay(Widget):
     def increase_score(self, dt):
         self.score += 1
 
+<<<<<<< HEAD
     def coin_collected(self, coin_type):
         if coin_type == 'goldcoin':
             self.score += 10
@@ -428,6 +496,11 @@ class ScoreDisplay(Widget):
             print 'RED'
         if coin_type == 'bluecoin':
             print 'BLUE'
+=======
+    def coin_collected(self):
+        self.score += 10
+        log.log_event('coin_collected')
+>>>>>>> b4e014d09dfaf3ba975ec3e2727167d4842b30a7
         if self.sound_count == 1:
             self.game.sound_fx.play('coin_pickup_1')
             self.sound_count = 2
@@ -555,6 +628,7 @@ class ConfinedEnemy(Widget):
                     self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
                     PopMatrix()
             if self.game.player_character.collide_widget(enemy) == True and self.game.player_character.offensive_move == False and enemy.killed == False and abs(enemy.x - self.game.player_character.x) < 50 and abs(enemy.y - self.game.player_character.y) < 100 and enemy.killed_player == False:
+                log.log_event('player_killed_by_enemy')
                 self.game.player_character.die()
                 enemy.killed_player = True
             if self.game.player_character.collide_widget(enemy) == True and enemy.check_health == True and self.game.player_character.x - enemy.x < 60 and abs(enemy.y - self.game.player_character.y) < 150:
@@ -563,9 +637,10 @@ class ConfinedEnemy(Widget):
                     enemy.check_health = False
                     self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
                     self.play_killed_sound(1)
+                    log.log_event('enemy_killed')
+                    print 'enemy killed'
                 if self.game.player_character.offensive_move == False:
                     self.play_killed_sound(2)
-                print 'enemy killed'
             if enemy.outside_range == True:
                 self.enemies.pop(self.enemies.index(enemy))
                 print 'ENEMY REMOVED'
@@ -737,8 +812,8 @@ class ScrollingForeground(Widget):
         super(ScrollingForeground, self).__init__(**kwargs)
         self.platforms = list()
         self.platforms_dict = dict()
-        Clock.schedule_once(functools.partial(self._init_platform, 0, None))
-        Clock.schedule_once(functools.partial(self._init_platform, 1, None))
+        Clock.schedule_once(partial(self._init_platform, 0, None))
+        Clock.schedule_once(partial(self._init_platform, 1, None))
         self._create_initial_platforms(1)
         Clock.schedule_once(self._update)
 
@@ -862,7 +937,7 @@ class ScrollingForeground(Widget):
                     self.lines[platform.line]['min_distance'] + self.lines[platform.line]['difficulty']*(self.lines[platform.line]['max_distance']
                      - self.lines[platform.line]['min_distance'])) / (self.speed * self.speed_multiplier)
 
-        Clock.schedule_once(functools.partial(self._init_platform, platform.line, platform.end_height), interval)
+        Clock.schedule_once(partial(self._init_platform, platform.line, platform.end_height), interval)
 
     def _create_initial_platforms(self, line):
         src = {(0,0): 'media/art/platforms/platform1.png'}
@@ -1198,16 +1273,76 @@ class MenuScreen(Screen):
             self.manager.current = 'game'
             self.manager.get_screen('game').start()
 
+class GetNameInput(Widget):
+    
+    ok = BooleanProperty(False)
+    text = StringProperty("Please enter your name.")
+
 class ReplayScreen(Screen):
     foreground = ObjectProperty(None)
+    hi_scores_list = ListProperty([("-", "0")]*5)
+    game_score = 0
 
     def __init__(self, **kwargs):
         super(ReplayScreen, self).__init__(**kwargs)
+
+    def on_transition_state(self, instance, value):
+        if value != 'in':
+            return
+        log.record_data('game_score', self.game_score)
+
+        self.hi_scores_from_file = []
+        try:
+            with open('hi_scores', 'r') as hi_score_file:
+                for line in hi_score_file:
+                    if line.strip() == '': continue
+                    ls = [x.strip() for x in line.split(':')]
+                    self.hi_scores_from_file.append([ls[0], float(ls[1])])
+        except IOError:
+            pass
+
+        self.update_hi_score_display()
+        
+
+        # now test if the user's score is over min(self.hi_scores_from_file)
+        if self.game_score >= min([float(t[1]) for t in self.hi_scores_list]) or len(self.hi_scores_from_file) == 0:
+            self.get_name_widget = GetNameInput()
+            popup = Popup(title='Congratulations!', content = self.get_name_widget, size_hint=(.4,.4))
+            self.get_name_widget.bind(ok = popup.dismiss)
+            popup.bind(on_dismiss = self.get_name_popup_closed)
+            popup.open()
+        else:
+            log.send_to_logs()
+    
+    def get_name_popup_closed(self, *largs):
+        print self.get_name_widget.text 
+        log.record_data('player_name', self.get_name_widget.text)
+        log.send_to_logs()
+
+        if self.get_name_widget.text == "Please enter your name.": return
+
+        if len(self.hi_scores_from_file) == 5:
+            self.hi_scores_from_file = sorted([[self.get_name_widget.text, self.game_score]] + sorted(self.hi_scores_from_file, key=lambda t: t[1])[1:], key=lambda t: t[1], reverse=True)
+        else:
+            self.hi_scores_from_file = sorted([[self.get_name_widget.text, self.game_score]] + sorted(self.hi_scores_from_file, key=lambda t: t[1]), key=lambda t: t[1], reverse=True)
+        
+        self.update_hi_score_display()
+        self.write_hi_scores_to_file()
+
+    def update_hi_score_display(self):
+        for idx, score in enumerate(sorted(self.hi_scores_from_file, key=lambda t: t[1], reverse=True)):
+            self.hi_scores_list[idx] = (score[0], str(int(score[1])))
+
+    def write_hi_scores_to_file(self):
+        with open('hi_scores', 'w') as hi_score_file:
+            for line in self.hi_scores_list:
+                hi_score_file.write(line[0]+ ": " + str(line[1]) + '\n')
 
     def button_callback(self, btn_id):
         if btn_id == 'quit':
             Window.close()
         elif btn_id == 'new':
+            log.clear()
             self.parent.remove_widget(self.manager.get_screen('game'))
             self.parent.add_widget(RunningGame(name='game'))
             self.manager.current = 'game'
@@ -1221,6 +1356,7 @@ Factory.register('ScrollingBackground', ScrollingBackground)
 Factory.register('ScoreDisplay', ScoreDisplay)
 Factory.register('LivesDisplay', LivesDisplay)
 
+log = Logger()
 
 class RunningGameApp(App):
     def build(self):
