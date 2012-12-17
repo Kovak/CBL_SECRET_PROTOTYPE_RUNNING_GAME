@@ -98,8 +98,12 @@ class RunningGame(Screen):
             if touch.ud['swipe'] == 'up':
                 self.player_character.exec_move("jump1")
             elif touch.ud['swipe'] == 'right':
-                if not self.player_character.is_dropping:
-                    self.player_character.exec_move("dash")
+                if not self.player_character.is_dropping and self.player_character.is_dashing == False:
+                    if self.player_character.dash_set:
+                        self.player_character.exec_move("dash")
+                    if not self.player_character.dash_set and self.player_character.jump_dash == False:
+                        self.player_character.exec_move("dash")
+                        self.player_character.jump_dash = True
             elif touch.ud['swipe'] == 'down':
                 self.player_character.drop_plat = True
                 self.player_character.exec_move("drop")
@@ -211,7 +215,7 @@ class PlayerCharacter(Widget):
     isRendered = BooleanProperty(False)
     y_velocity = NumericProperty(0)
     oyv = 0
-
+    is_on_ground = BooleanProperty(False)
     jump_num = NumericProperty(0)
     max_jumps = NumericProperty(2)
     jump_velocity = NumericProperty(250)
@@ -219,6 +223,9 @@ class PlayerCharacter(Widget):
     landed = BooleanProperty(False)
     drop_plat = BooleanProperty(False)
     current_plat_height = NumericProperty(0)
+    dash_time_count = NumericProperty(0)
+    jump_dash = BooleanProperty(False)
+    dash_set = BooleanProperty(False)
 
     drop_velocity = NumericProperty(-300)
     is_dropping = BooleanProperty(False)
@@ -269,6 +276,7 @@ class PlayerCharacter(Widget):
             self.jump_num += 1
             self.is_jumping = True
             self.offensive_move = False
+            
             self.y_velocity += self.jump_velocity
             log.log_event('jump1')
         elif move_name == 'drop':
@@ -289,6 +297,7 @@ class PlayerCharacter(Widget):
             anim.start(self.game)
             # self.is_dropping = False
             self.landed = True
+            self.is_jumping = False
             self.offensive_move = False
             Clock.schedule_once(partial(self.exec_move, 'walk'), .3)
         elif move_name == 'dash':
@@ -296,33 +305,36 @@ class PlayerCharacter(Widget):
             anim.start(self.game)
             self.is_dashing = True
             self.offensive_move = True
+            self.is_jumping = False
             self.game.sound_fx.play('sword_draw')
             Clock.schedule_once(partial(self.exec_move, 'dash-end'), .28)
             log.log_event('dash')
         elif move_name == 'dash-end':
-            self.is_dashing = False
             anim = Animation(global_speed = 1, duration = .1)
             anim.start(self.game)
             self.offensive_move = False
             self.drop_plat = False
+            self.is_jumping = False
             # as of now dash-end does not have an animation associated with it
             if not self.is_dropping:
                 self.exec_move('walk')
             return
         
         elif move_name == 'walk':
+            
             self.is_dropping = False
             self.drop_plat = False
+            self.is_jumping = False
 
         elif move_name == 'drop_platform':
-            self.is_dashing = False
+            
             self.is_dropping = False
+            self.is_jumping = False
             self.y = self.y - 5
             self.y_velocity = self.drop_velocity
             self.exec_move('jump2')
             log.log_event('drop_platform')
 
-        self.drop_plat = False
         self.animation_controller.set_animation(move_name)
 
     def on_y_velocity(self, instance, value):
@@ -341,6 +353,7 @@ class PlayerCharacter(Widget):
         self.jump_num = 1
         self.is_dropping = False
         self.is_dashing = False
+        self.dash_time_count = 0
         self.game.global_speed = 1
         self.exec_move('jump2')
 
@@ -357,9 +370,11 @@ class PlayerCharacter(Widget):
 
     def _advance_time(self, dt):
         is_on_ground = self._check_collision()
+        self.dash_set = is_on_ground
 
         # player was falling down and landed:
         if is_on_ground and self.y_velocity < 0:
+            self.jump_dash = False
             self.y_velocity = 0
             self.jump_num = 0
             self.is_jumping = False
@@ -389,6 +404,12 @@ class PlayerCharacter(Widget):
             log.log_event('fell_off')
             self.die()
 
+        if self.is_dashing == True:
+            self.dash_time_count += 1
+            if self.dash_time_count == 28:
+                self.dash_time_count = 0
+                self.is_dashing = False
+
         #Animation Code:
         self.texture, self.size = self.animation_controller.get_frame()
 
@@ -398,6 +419,8 @@ class PlayerCharacter(Widget):
         if not self.is_dashing and self.has_emitted_dash_particles:
             self.has_emitted_dash_particles = False
         if self.landed == True:
+            if self.game.particle_effects.dust_plume_emitting == True:
+                self.game.particle_effects.stop_dust_plume(dt)
             self.game.particle_effects.emit_dust_plume(dt, emit_x=self.x, emit_y=self.y)
             self.landed = False
     
@@ -470,7 +493,6 @@ class ConfinedEnemy(Widget):
     speed = NumericProperty(200)
     texture = StringProperty(None)
     speed_multiplier = NumericProperty(1)
-    sound_count = NumericProperty(1)
     game = ObjectProperty(None)
 
     def __init__(self, **kwargs):
@@ -543,14 +565,12 @@ class ConfinedEnemy(Widget):
         enemy.animation_controller.set_animation(move_name)
         return enemy
 
-    def play_killed_sound(self):
-        if self.sound_count == 1:
+    def play_killed_sound(self, hit_sound):
+        if hit_sound == 1:
             self.game.sound_fx.play('sword_hit1')
-            self.sound_count = 2
             return
-        if self.sound_count == 2:
+        if hit_sound == 2:
             self.game.sound_fx.play('sword_hit2')
-            self.sound_count = 1
             return
 
     def _render(self):
@@ -569,12 +589,14 @@ class ConfinedEnemy(Widget):
                 log.log_event('player_killed_by_enemy')
                 self.game.player_character.die()
                 enemy.killed_player = True
-            if self.game.player_character.collide_widget(enemy) == True and self.game.player_character.offensive_move == True and enemy.check_health == True and self.game.player_character.x - enemy.x < 60 and abs(enemy.y - self.game.player_character.y) < 150:
-                enemy.killed = True
-                enemy.check_health = False
-                self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
-                self.play_killed_sound()
-                log.log_event('enemy_killed')
+            if self.game.player_character.collide_widget(enemy) == True and enemy.check_health == True and self.game.player_character.x - enemy.x < 60 and abs(enemy.y - self.game.player_character.y) < 150:
+                if self.game.player_character.offensive_move == True:
+                    enemy.killed = True
+                    enemy.check_health = False
+                    self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
+                    self.play_killed_sound(1)
+                if self.game.player_character.offensive_move == False:
+                    self.play_killed_sound(2)
                 print 'enemy killed'
             if enemy.outside_range == True:
                 self.enemies.pop(self.enemies.index(enemy))
@@ -920,7 +942,7 @@ class ScrollingForeground(Widget):
                     platform.confined_enemy.max = platform.x + platform.size[0]
                     platform.confined_enemy = self.game.confined_enemy.animate_con_enemy(enemy=platform.confined_enemy, plat_x=platform.x, scroll_multiplier=scroll_multiplier)
 
-            if platform.x < -platform.size[0]:
+            if platform.x < -platform.size[0]*1.25:
                 self.platforms.pop(self.platforms.index(platform))
             elif platform.is_partially_off_screen and platform.x + platform.size[0] < Window.size[0]:
                 self._signal_platform_on_screen(platform)
@@ -953,6 +975,8 @@ class ScrollingForeground(Widget):
 class ParticleEffects(Widget):
     landing_dust = ObjectProperty(ParticleSystem)
     shoot_fire = ObjectProperty(ParticleSystem)
+    dust_plume = ObjectProperty(ParticleSystem)
+    dust_plume_emitting = BooleanProperty(False)
     game = ObjectProperty(None)
 
     def emit_dust_plume(self, dt, emit_x, emit_y, name = 'ParticleEffects/game_effects/hhs-dirtplume.pex'):
@@ -960,10 +984,12 @@ class ParticleEffects(Widget):
         self.dust_plume.emitter_x = emit_x + 32
         self.dust_plume.emitter_y = emit_y
         self.dust_plume.start()
+        self.dust_plume_emitting = True
         self.add_widget(self.dust_plume)
-        Clock.schedule_once(self.stop_dust_plume, 1.0)
+        Clock.schedule_once(self.stop_dust_plume, .9)
 
     def stop_dust_plume(self,dt):
+        self.dust_plume_emitting = False
         self.dust_plume.stop(clear=True)
         self.remove_widget(self.dust_plume)
         
@@ -974,7 +1000,7 @@ class ParticleEffects(Widget):
         self.dash_particles.emitter_y = emit_y
         self.dash_particles.start()
         self.add_widget(self.dash_particles)
-        Clock.schedule_once(self.stop_dash_particles, .7)
+        Clock.schedule_once(self.stop_dash_particles, .5)
 
     def stop_dash_particles(self,dt):
         self.dash_particles.stop(clear=True)
