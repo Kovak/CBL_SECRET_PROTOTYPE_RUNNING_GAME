@@ -31,13 +31,22 @@ def random_variance(base, variance):
 
 class DebugPanel(Widget):
     fps = StringProperty(None)
+    start = True
 
     def update_fps(self,dt):
         self.fps = str(int(Clock.get_fps()))
         Clock.schedule_once(self.update_fps)
+        if self.start: Clock.schedule_once(self.log_fps)
+        self.start = False
+
+    def log_fps(self,dt):
+        log.add_datapoint('fps', float(self.fps))
+        Clock.schedule_once(self.log_fps, 7.5)
 
 class Logger(object):
     active_log = {}
+    active_log_raw_items = {}
+
     server_url = 'http://sleepy-anchorage-4701.herokuapp.com/log?'
     headers = {'Content-type': 'application/x-www-form-urlencoded',
           'Accept': 'text/plain',}
@@ -51,7 +60,17 @@ class Logger(object):
     def record_data(self, key, val):
         self.active_log[key] = val
 
+    def add_datapoint(self, key, val):
+        # keeps a running average of val
+        try:
+            self.active_log_raw_items[key].append(val)
+        except KeyError:
+            self.active_log_raw_items[key] = [val,]
+
     def send_to_logs(self):
+        for k in self.active_log_raw_items.keys():
+            self.active_log[k] = sum(self.active_log_raw_items[k])/float(len(self.active_log_raw_items))
+
         params = urllib.urlencode(self.active_log)
         print 'sending request:', params
         req = UrlRequest(self.server_url + params, method='GET')
@@ -1253,6 +1272,8 @@ class ReplayScreen(Screen):
             self.get_name_widget.bind(ok = popup.dismiss)
             popup.bind(on_dismiss = self.get_name_popup_closed)
             popup.open()
+        else:
+            log.send_to_logs()
     
     def get_name_popup_closed(self, *largs):
         print self.get_name_widget.text 
