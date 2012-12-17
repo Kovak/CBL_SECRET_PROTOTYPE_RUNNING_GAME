@@ -1266,7 +1266,7 @@ class ReplayScreen(Screen):
         
 
         # now test if the user's score is over min(self.hi_scores_from_file)
-        if self.game_score >= min([float(t[1]) for t in self.hi_scores_list]):
+        if self.game_score >= min([float(t[1]) for t in self.hi_scores_list]) or len(self.hi_scores_from_file) == 0:
             self.get_name_widget = GetNameInput()
             popup = Popup(title='Congratulations!', content = self.get_name_widget, size_hint=(.4,.4))
             self.get_name_widget.bind(ok = popup.dismiss)
