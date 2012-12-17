@@ -55,14 +55,12 @@
             spacing: 40
             Button:
                 size_hint: (1, .5)
-                background_normal: 'media/art/icons/new_game_button_normal.png'
-                background_down: 'media/art/icons/new_game_button_down.png'
+                text: 'new game'
                 on_release: root.button_callback('new')
             Button:
                 name: 'quit'
                 size_hint: (1, .5)
-                background_normal: 'media/art/icons/quit_button_normal.png'
-                background_down: 'media/art/icons/quit_button_down.png'
+                text: 'quit :('
                 on_release: root.button_callback('quit')
 
 <ReplayScreen>:
@@ -141,14 +139,12 @@
                 spacing: 20
                 Button:
                     size_hint: (.5, 1)
-                    background_normal: 'media/art/icons/new_game_button_normal.png'
-                    background_down: 'media/art/icons/new_game_button_down.png'
+                    text: 'new game'
                     on_release: root.button_callback('new')
                 Button:
                     name: 'quit'
                     size_hint: (.5, 1)
-                    background_normal: 'media/art/icons/quit_button_normal.png'
-                    background_down: 'media/art/icons/quit_button_down.png'
+                    text: 'quit'
                     on_release: root.button_callback('quit')
 
 <ScoreDisplay>:
