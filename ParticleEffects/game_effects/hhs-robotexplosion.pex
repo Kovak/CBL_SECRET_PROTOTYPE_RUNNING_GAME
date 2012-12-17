@@ -1,0 +1,37 @@
+<?xml version="1.0" ?>
+  <particleEmitterConfig>
+  <texture name="./media/particles/smokeparticle.png"/>
+  <sourcePositionVariance x="1" y="1"/>
+  <gravity x="0" y="0"/>
+  <emitterType value="0"/>
+  <maxParticles value="30"/>
+  <particleLifeSpan value="1.435"/>
+  <particleLifespanVariance value="0"/>
+  <startParticleSize value="151"/>
+  <startParticleSizeVariance value="0"/>
+  <finishParticleSize value="106"/>
+  <FinishParticleSizeVariance value="0"/>
+  <angle value="0"/>
+  <angleVariance value="359.999999589"/>
+  <rotationStart value="0"/>
+  <rotationStartVariance value="20626.4806247"/>
+  <rotationEnd value="0"/>
+  <rotationEndVariance value="20626.4806247"/>
+  <speed value="256"/>
+  <speedVariance value="10"/>
+  <radialAcceleration value="-400"/>
+  <radialAccelVariance value="0"/>
+  <tangentialAcceleration value="-140"/>
+  <tangentialAccelVariance value="0"/>
+  <maxRadius value="100"/>
+  <maxRadiusVariance value="0"/>
+  <minRadius value="0"/>
+  <rotatePerSecond value="0"/>
+  <rotatePerSecondVariance value="0"/>
+  <startColor alpha="1.0" blue="0" green="0" red="0.20000000298"/>
+  <startColorVariance alpha="0" blue="0" green="0" red="0"/>
+  <finishColor alpha="0.217489123994" blue="0" green="0.450000017881" red="0.600000023842"/>
+  <finishColorVariance alpha="0" blue="0" green="0" red="0"/>
+  <blendFuncSource value="772"/>
+  <blendFuncDestination value="771"/>
+  </particleEmitterConfig>
