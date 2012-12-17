@@ -256,7 +256,7 @@ class PlayerCharacter(Widget):
     dash_set = BooleanProperty(False)
     stop = BooleanProperty(False)
 
-    drop_velocity = NumericProperty(-300)
+    drop_velocity = NumericProperty(-500)
     is_dropping = BooleanProperty(False)
 
     gravity = NumericProperty(300)
@@ -317,7 +317,7 @@ class PlayerCharacter(Widget):
             self.is_jumping = False
             self.is_dropping = True
             self.offensive_move = True
-            self.y_velocity = self.drop_velocity - 200
+            self.y_velocity = self.drop_velocity
             self.game.sound_fx.play('sword_draw')
             log.log_event('drop')
         elif move_name == 'drop-land':
@@ -334,7 +334,7 @@ class PlayerCharacter(Widget):
             anim.start(self.game)
             self.is_dashing = True
             self.offensive_move = True
-            self.is_jumping = False
+            # self.is_jumping = False
             self.game.sound_fx.play('sword_draw')
             Clock.schedule_once(partial(self.exec_move, 'dash-end'), .28)
             log.log_event('dash')
@@ -343,9 +343,11 @@ class PlayerCharacter(Widget):
             anim.start(self.game)
             self.offensive_move = False
             self.drop_plat = False
-            self.is_jumping = False
+            self.is_dashing = False
             # as of now dash-end does not have an animation associated with it
-            if not self.is_dropping:
+            if self.is_dropping or self.is_jumping:
+                self.exec_move('jump2')
+            else:
                 self.exec_move('walk')
             return
         
@@ -433,11 +435,11 @@ class PlayerCharacter(Widget):
             log.log_event('fell_off')
             self.die()
 
-        if self.is_dashing == True:
-            self.dash_time_count += 1
-            if self.dash_time_count == 28:
-                self.dash_time_count = 0
-                self.is_dashing = False
+        # if self.is_dashing == True:
+        #     self.dash_time_count += 1
+        #     if self.dash_time_count == 28:
+        #         self.dash_time_count = 0
+        #         self.is_dashing = False
 
         #Animation Code:
         self.texture, self.size = self.animation_controller.get_frame()
