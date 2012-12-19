@@ -677,7 +677,7 @@ class WorldObject(Widget):
         self.world_objects = list()
         self.world_objects_dict = dict()
 
-    def create_world_object(self, obj_type, plat_y, plat_x, plat_size):
+    def create_world_object(self, obj_type, plat_y, plat_x):
         world_object = ScoringObject()
         world_object.y = plat_y
         world_object.x = plat_x
@@ -925,6 +925,11 @@ class ScrollingForeground(Widget):
         platform.y = 0
         platform.end_height = platform.y + heights[-1] * platform.tile_size[1]
         platform.line = line
+        # print 'tile dict',col_idx
+        # if platform.size > 250:
+        #     num_of_tiles = int(platform.size[0]/64)
+        #     for i in range(0, num_of_tiles):
+        #         platform.goldcoin = self.game.goldcoin.create_world_object(obj_type='goldcoin', plat_y = 200, plat_x = -32 + i * 64)
         return platform
 
     def _signal_platform_on_screen(self, platform):
@@ -972,11 +977,11 @@ class ScrollingForeground(Widget):
         if platform.size[0] < 200:
             select_coin = random.randint(1,3)
             if select_coin == 1:
-                platform.goldcoin = self.game.goldcoin.create_world_object(obj_type='goldcoin', plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
+                platform.goldcoin = self.game.goldcoin.create_world_object(obj_type='goldcoin', plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x + platform.size[0]*.5)
             elif select_coin == 2:
-                platform.goldcoin = self.game.goldcoin.create_world_object(obj_type='redcoin', plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
+                platform.goldcoin = self.game.goldcoin.create_world_object(obj_type='redcoin', plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x + platform.size[0]*.5)
             elif select_coin == 3:
-                platform.goldcoin = self.game.goldcoin.create_world_object(obj_type='bluecoin', plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
+                platform.goldcoin = self.game.goldcoin.create_world_object(obj_type='bluecoin', plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x + platform.size[0]*.5)
         platform.earth = True
         return platform
 
