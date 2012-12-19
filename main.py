@@ -625,7 +625,7 @@ class ConfinedEnemy(Widget):
             self.game.sound_fx.play('sword_hit2')
             return
 
-    def _render(self):
+    def _render(self, dt):
         for enemy in self.enemies:
             if enemy not in self.enemies_dict:
                 self.enemies_dict[enemy] = dict()
@@ -645,6 +645,8 @@ class ConfinedEnemy(Widget):
                 if self.game.player_character.offensive_move == True:
                     enemy.killed = True
                     enemy.check_health = False
+                    self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
+                    self.game.sound_fx.play('robot_explosion')
                     self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
                     self.play_killed_sound(1)
                     log.log_event('enemy_killed')
@@ -988,7 +990,7 @@ class ScrollingForeground(Widget):
     def _update(self, dt):
         self._advance_time(dt)
         self._render()
-        self.game.confined_enemy._render()
+        self.game.confined_enemy._render(dt)
         self.game.goldcoin._render()
         Clock.schedule_once(self._update)
 
@@ -1091,6 +1093,19 @@ class ParticleEffects(Widget):
         self.shimmer.stop(clear=True)
         self.remove_widget(self.shimmer)
 
+    def confined_enemy_explosion(self,dt, emit_x, emit_y, name = 'ParticleEffects/game_effects/hhs-robotexplosion.pex'):
+        self.explode = ParticleSystem(name)
+        self.explode.emitter_x = emit_x
+        self.explode.emitter_y = emit_y
+        self.explode.start()
+        self.add_widget(self.explode)
+        Clock.schedule_once(self.stop_explosion, .5)
+
+    def stop_explosion(self, dt):
+        self.explode.stop(clear=True)
+        self.remove_widget(self.explode)
+
+
 class ScrollImage(object):
     x, y = -500, -500
     texture = None
@@ -1170,16 +1185,18 @@ class ScrollingBackground(Widget):
     speed = NumericProperty(50)
     speed_multiplier = NumericProperty(1)
     current_background_x = NumericProperty(0)
+    current_land_background_x = NumericProperty(0)
+    current_sky_background_x = NumericProperty(0)
 
     def __init__(self, **kwargs):
         super(ScrollingBackground, self).__init__(**kwargs)
         self.backelements = list()
-        # self.backelements.append('media/art/midground_objects/testarch.png')
-        self.backelements.append('media/art/midground_objects/testground1.png')
-        self.backelements.append('media/art/midground_objects/testground2.png')
-        # self.backelements.append('media/art/midground_objects/testhill.png')
-        # self.backelements.append('media/art/midground_objects/testhill2.png')
-        # self.backelements.append('media/art/midground_objects/testhouse.png')
+        self.backelements.append('media/art/background_objects/testground1.png')
+        self.backelements.append('media/art/background_objects/testground2.png')
+        self.backelements.append('media/art/background_objects/cloud1.png')
+        self.backelements.append('media/art/background_objects/cloud2.png')
+        self.backelements.append('media/art/background_objects/cloud3.png')
+        self.backelements.append('media/art/background_objects/cloud4.png')
         self.backgrounds = list()
         self.background_dict = dict()
         Clock.schedule_once(self._init_background)
@@ -1196,15 +1213,23 @@ class ScrollingBackground(Widget):
 
     def _create_background(self):
         background = ScrollImage()
-        rand_background = random.randint(0, 1)
+        rand_background = random.randint(0, 5)
         background.texture = self.backelements[rand_background]
         texture = Image(source = self.backelements[rand_background])
-        background.spacing = 0
-        background.size = texture.texture.size
+        background.size = texture.size
         background.speed = background.size[0]*.1
-        background.y = 0 + background.size[1]*.5
-        background.x = self.current_background_x + background.spacing
+        if rand_background < 2:
+            background.y = 0 + background.size[1]*.5
+            background.spacing = 0
+            background.x = self.current_land_background_x + background.spacing
+            self.current_land_background_x += background.size[0] + background.spacing
+        else:
+            background.y = Window.size[1] - background.size[1]*random.uniform(.2,2.5)
+            background.spacing = random.uniform(10,20)
+            background.x = self.current_sky_background_x + background.spacing
+            self.current_sky_background_x += background.size[0] - background.spacing
         self.current_background_x += background.size[0] + background.spacing
+
         return background
 
     def _render_background(self):

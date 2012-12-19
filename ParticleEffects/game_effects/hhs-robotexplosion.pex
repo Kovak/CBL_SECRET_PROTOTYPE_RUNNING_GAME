@@ -4,20 +4,20 @@
   <sourcePositionVariance x="1" y="1"/>
   <gravity x="0" y="0"/>
   <emitterType value="0"/>
-  <maxParticles value="30"/>
+  <maxParticles value="17"/>
   <particleLifeSpan value="1.435"/>
   <particleLifespanVariance value="0"/>
-  <startParticleSize value="151"/>
+  <startParticleSize value="144"/>
   <startParticleSizeVariance value="0"/>
-  <finishParticleSize value="106"/>
-  <FinishParticleSizeVariance value="0"/>
+  <finishParticleSize value="108"/>
+  <FinishParticleSizeVariance value="14"/>
   <angle value="0"/>
   <angleVariance value="359.999999589"/>
   <rotationStart value="0"/>
   <rotationStartVariance value="20626.4806247"/>
   <rotationEnd value="0"/>
   <rotationEndVariance value="20626.4806247"/>
-  <speed value="256"/>
+  <speed value="254"/>
   <speedVariance value="10"/>
   <radialAcceleration value="-400"/>
   <radialAccelVariance value="0"/>
@@ -28,9 +28,9 @@
   <minRadius value="0"/>
   <rotatePerSecond value="0"/>
   <rotatePerSecondVariance value="0"/>
-  <startColor alpha="1.0" blue="0" green="0" red="0.20000000298"/>
+  <startColor alpha="1" blue="1" green="0.100000023842" red="0.212500020862"/>
   <startColorVariance alpha="0" blue="0" green="0" red="0"/>
-  <finishColor alpha="0.217489123994" blue="0" green="0.450000017881" red="0.600000023842"/>
+  <finishColor alpha="1" blue="0.100000023842" green="0.100000023842" red="1"/>
   <finishColorVariance alpha="0" blue="0" green="0" red="0"/>
   <blendFuncSource value="772"/>
   <blendFuncDestination value="771"/>
