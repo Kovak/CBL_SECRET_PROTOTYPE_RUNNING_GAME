@@ -395,6 +395,7 @@ class PlayerCharacter(Widget):
         self.exec_move('jump2')
         self.game.score.global_speed_multiplier = 1
         self.game.score.score_multiplier = 1
+        self.game.sound_fx.play('player_death')
 
         self.game.life_count.decrease_lives()
         if self.game.life_count.lives == 0:
@@ -499,26 +500,28 @@ class ScoreDisplay(Widget):
 
     def coin_collected(self, coin_type):
         log.log_event('coin_collected')
-        if coin_type == 'goldcoin':
-            self.score += int(10 * self.score_multiplier)
         if coin_type == 'redcoin':
             if self.global_speed_multiplier < 2:
                 self.global_speed_multiplier += .2
                 self.game.global_speed = 1 * self.global_speed_multiplier
                 self.score_multiplier += .4
+                self.game.sound_fx.play('red_coin_pickup')
         if coin_type == 'bluecoin':
             if self.global_speed_multiplier > .6:
                 self.global_speed_multiplier -= .2
                 self.game.global_speed = 1 * self.global_speed_multiplier
                 self.score_multiplier -= .4
-        if self.sound_count == 1:
-            self.game.sound_fx.play('coin_pickup_1')
-            self.sound_count = 2
-            return
-        if self.sound_count == 2:
-            self.game.sound_fx.play('coin_pickup_2')
-            self.sound_count = 1
-            return
+                self.game.sound_fx.play('blue_coin_pickup')
+        if coin_type == 'goldcoin':
+            self.score += int(10 * self.score_multiplier)
+            if self.sound_count == 1:
+                self.game.sound_fx.play('coin_pickup_1')
+                self.sound_count = 2
+                return
+            if self.sound_count == 2:
+                self.game.sound_fx.play('coin_pickup_2')
+                self.sound_count = 1
+                return
 
 class LivesDisplay(Widget):
     lives = NumericProperty(5)
@@ -1203,12 +1206,13 @@ class ScrollingBackground(Widget):
         Clock.schedule_once(self._update_background)
 
     def _init_background(self,dt):
-        backgroundxspace = Window.width * 2
+        backgroundxspace = Window.width * 2.5
         num_back_objects = 0
         while backgroundxspace > 0:
             background = self._create_background()
             self.backgrounds.append(background)
-            backgroundxspace -= background.size[0]
+            if background.sky == False:
+                backgroundxspace -= background.size[0]
             num_back_objects += 1
 
     def _create_background(self):
@@ -1220,15 +1224,17 @@ class ScrollingBackground(Widget):
         background.speed = background.size[0]*.1
         if rand_background < 2:
             background.y = 0 + background.size[1]*.5
-            background.spacing = 0
+            background.spacing = -5
             background.x = self.current_land_background_x + background.spacing
+            background.sky = False
             self.current_land_background_x += background.size[0] + background.spacing
         else:
-            background.y = Window.size[1] - background.size[1]*random.uniform(.2,2.5)
+            background.y = Window.height - background.size[1]*random.uniform(.2,2.5)
             background.spacing = random.uniform(10,20)
             background.x = self.current_sky_background_x + background.spacing
+            background.sky = True
             self.current_sky_background_x += background.size[0] - background.spacing
-        self.current_background_x += background.size[0] + background.spacing
+        # self.current_background_x += background.size[0] + background.spacing
 
         return background
 
@@ -1256,7 +1262,10 @@ class ScrollingBackground(Widget):
         for background in self.backgrounds:
             background.x -= self.speed * self.speed_multiplier * dt
             if background.x < -background.size[0]:
-                self.current_background_x -= background.size[0] + background.spacing
+                if background.sky == False:
+                    self.current_land_background_x -= background.size[0] + background.spacing
+                elif background.sky == True:
+                    self.current_sky_background_x -= background.size[0] - background.spacing
                 self.backgrounds.pop(self.backgrounds.index(background))
                 background = self._create_background()
                 self.backgrounds.append(background)
