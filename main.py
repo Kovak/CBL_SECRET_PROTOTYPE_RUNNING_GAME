@@ -100,9 +100,9 @@ class RunningGame(Screen):
         self.add_widget(self.background)
         self.add_widget(self.midground)
         self.add_widget(self.foreground)
+        self.add_widget(self.goldcoin)
         self.add_widget(self.confined_enemy)
         self.add_widget(self.player_character)
-        self.add_widget(self.goldcoin)
         self.add_widget(self.particle_effects)
         self.add_widget(self.score)
         self.add_widget(self.life_count)
@@ -658,8 +658,8 @@ class ConfinedEnemy(Widget):
                             if self.game.player_character.y - enemy.y < 40 and self.game.player_character.y - enemy.y > -60:
                                 self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
                                 self.kill_enemy(enemy)
-                    else:
-                        self.game.player_character.offensive_move = False
+                    # else:
+                    #     self.game.player_character.offensive_move = False
                         
             if enemy.outside_range == True:
                 self.enemies.pop(self.enemies.index(enemy))
@@ -1025,13 +1025,13 @@ class ScrollingForeground(Widget):
         if platform.size[0] > 200:
             platform.confined_enemy = self.game.confined_enemy.create_enemy(plat_y = platform.y + platform.size[1]*1.5, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
         # if platform.size[0] < 200:
-        select_coin = random.randint(1,3)
-        if select_coin == 1:
+        select_coin = random.randint(1,6)
+        if select_coin == 1 or select_coin == 4 or select_coin == 6:
             for i in range(1, int(platform.size[0]/50)):
                 plat_x = platform.x + 50 * i
                 goldcoin = self.game.goldcoin.create_world_object(obj_type='goldcoin', plat_y = platform.y + platform.size[1] * 1.25, plat_x = plat_x)
                 platform.coins.append(goldcoin)
-        elif select_coin == 2:
+        elif select_coin == 2 or select_coin == 5:
             goldcoin = self.game.goldcoin.create_world_object(obj_type='redcoin', plat_y = platform.y + platform.size[1] * 1.25, plat_x = platform.x + platform.size[0]*.5)
             platform.coins.append(goldcoin)
         elif select_coin == 3:
