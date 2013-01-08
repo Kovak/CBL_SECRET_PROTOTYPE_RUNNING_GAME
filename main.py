@@ -723,8 +723,6 @@ class WorldObject(Widget):
 
     def create_world_object(self, obj_type, plat_y, plat_x):
         world_object = ScoringObject()
-        world_object.y = plat_y
-        world_object.x = plat_x
         world_object.collected = False
         world_object._check_collision = True
         world_object.active = True
@@ -742,6 +740,8 @@ class WorldObject(Widget):
             
         world_object.texture = world_object.animation_controller.textures[world_object.animation_controller.active_texture_index]
         world_object.texture, world_object.size = world_object.animation_controller.get_frame()
+        world_object.y = plat_y + world_object.size[1] * .5
+        world_object.x = plat_x
         world_object.right = world_object.x + world_object.size[0] * .5
         world_object.top = world_object.y + world_object.size[1] * .5
         self.game.goldcoin.world_objects.append(world_object)
@@ -751,11 +751,13 @@ class WorldObject(Widget):
     def _advance_time(self, dt):
         for world_object in self.world_objects:
             # controls world object
-            if self.game.player_character.collide_widget(world_object) == True and world_object._check_collision == True and abs(world_object.x - self.game.player_character.x) < 55 and abs(world_object.y - self.game.player_character.y) < 70:
-                world_object.collected = True
-                world_object._check_collision = False
-                self.world_objects_dict[world_object]['translate'].xy = (-100, world_object.y)
-                self.game.score.coin_collected(world_object.type)
+            if self.game.player_character.collide_widget(world_object) and world_object._check_collision:
+                if world_object.x - self.game.player_character.x < 92 and world_object.x - self.game.player_character.x > -5:
+                    if self.game.player_character.y - world_object.y < 10 and self.game.player_character.y - world_object.y > -150:
+                        world_object.collected = True
+                        world_object._check_collision = False
+                        self.world_objects_dict[world_object]['translate'].xy = (-100, world_object.y)
+                        self.game.score.coin_collected(world_object.type)
             if world_object.x < -100:
                 self.world_objects.pop(self.world_objects.index(world_object))
             elif world_object.collected == False:
@@ -809,8 +811,9 @@ class Platform(object):
                 if (r,c) in texture_sources.keys() and os.path.basename(texture_sources[(r,c)]) in self.walkable_textures: hs.append(tile_size[1] * (c+1))
             self.platform_heights.append(hs)
         # print self.platform_heights
-
-        self.goldcoin = ScoringObject()
+        self.coins = list()
+        goldcoin = ScoringObject()
+        self.coins.append(goldcoin)
         self.confined_enemy = Enemy()
 
 class ScrollingForeground(Widget):
@@ -968,6 +971,10 @@ class ScrollingForeground(Widget):
         platform.y = 0
         platform.end_height = platform.y + heights[-1] * platform.tile_size[1]
         platform.line = line
+        for i in range(1, int(platform.size[0]/50)):
+            plat_x = platform.x + 50 * i
+            goldcoin = self.game.goldcoin.create_world_object(obj_type='goldcoin', plat_y = platform.y + platform.size[1] * 1.25, plat_x = plat_x)
+            platform.coins.append(goldcoin)
         # print 'tile dict',col_idx
         # if platform.size > 250:
         #     num_of_tiles = int(platform.size[0]/64)
@@ -1017,14 +1024,19 @@ class ScrollingForeground(Widget):
         platform.line = line
         if platform.size[0] > 200:
             platform.confined_enemy = self.game.confined_enemy.create_enemy(plat_y = platform.y + platform.size[1]*1.5, plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
-        if platform.size[0] < 200:
-            select_coin = random.randint(1,3)
-            if select_coin == 1:
-                platform.goldcoin = self.game.goldcoin.create_world_object(obj_type='goldcoin', plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x + platform.size[0]*.5)
-            elif select_coin == 2:
-                platform.goldcoin = self.game.goldcoin.create_world_object(obj_type='redcoin', plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x + platform.size[0]*.5)
-            elif select_coin == 3:
-                platform.goldcoin = self.game.goldcoin.create_world_object(obj_type='bluecoin', plat_y = platform.y + platform.size[1]*1.25, plat_x = platform.x + platform.size[0]*.5)
+        # if platform.size[0] < 200:
+        select_coin = random.randint(1,3)
+        if select_coin == 1:
+            for i in range(1, int(platform.size[0]/50)):
+                plat_x = platform.x + 50 * i
+                goldcoin = self.game.goldcoin.create_world_object(obj_type='goldcoin', plat_y = platform.y + platform.size[1] * 1.25, plat_x = plat_x)
+                platform.coins.append(goldcoin)
+        elif select_coin == 2:
+            goldcoin = self.game.goldcoin.create_world_object(obj_type='redcoin', plat_y = platform.y + platform.size[1] * 1.25, plat_x = platform.x + platform.size[0]*.5)
+            platform.coins.append(goldcoin)
+        elif select_coin == 3:
+            goldcoin = self.game.goldcoin.create_world_object(obj_type='bluecoin', plat_y = platform.y + platform.size[1] * 1.25, plat_x = platform.x + platform.size[0]*.5)
+            platform.coins.append(goldcoin)
         platform.earth = True
         return platform
 
@@ -1042,15 +1054,16 @@ class ScrollingForeground(Widget):
             scroll_multiplier = self.speed * self.speed_multiplier * dt
             platform.x -= scroll_multiplier
              # set goldcoin x to correspond with its platform
-            if platform.goldcoin.active == True:
-                if platform.goldcoin.x < -100:
-                    platform.goldcoin.outside_range = True
-                    platform.goldcoin.active = False
-                else:
-                    platform.goldcoin.x = platform.x + platform.size[0]*.5
-                    self.game.particle_effects.goldcoin_shimmer(dt, emit_x=platform.goldcoin.x, emit_y=platform.goldcoin.y)
+            for goldcoin in platform.coins:
+                if goldcoin.active:
+                    if goldcoin.x < -100:
+                        goldcoin.outside_range = True
+                        goldcoin.active = False
+                    else:
+                        goldcoin.x -= scroll_multiplier
+                        # self.game.particle_effects.goldcoin_shimmer(dt, emit_x=goldcoin.x, emit_y=goldcoin.y)
             # set confined enemy x to correspond with its platform
-            if platform.confined_enemy.active == True:
+            if platform.confined_enemy.active:
                 if platform.confined_enemy.x < -100:
                     platform.confined_enemy.outside_range = True
                     platform.confined_enemy.active = False
