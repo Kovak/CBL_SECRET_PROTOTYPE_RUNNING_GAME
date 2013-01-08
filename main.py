@@ -100,12 +100,12 @@ class RunningGame(Screen):
         self.add_widget(self.background)
         self.add_widget(self.midground)
         self.add_widget(self.foreground)
-        self.add_widget(self.score)
-        self.add_widget(self.life_count)
         self.add_widget(self.confined_enemy)
         self.add_widget(self.player_character)
         self.add_widget(self.goldcoin)
         self.add_widget(self.particle_effects)
+        self.add_widget(self.score)
+        self.add_widget(self.life_count)
         
 
     def stop(self, *largs):
@@ -232,16 +232,21 @@ class SoundController(object):
 
     def __init__(self, game=None):
         super(SoundController, self).__init__()
-        self.sound_dict = {}
-        for f in os.listdir(self.sound_dir):
-            if os.path.splitext(os.path.basename(f))[1] != '.wav': continue
-            self.sound_dict[os.path.splitext(os.path.basename(f))[0]] = SoundLoader.load(os.path.join(self.sound_dir, os.path.basename(f)))
+        # self.sound_dict = {}
+        # for f in os.listdir(self.sound_dir):
+        #     if os.path.splitext(os.path.basename(f))[1] != '.wav': continue
+        #     self.sound_dict[os.path.splitext(os.path.basename(f))[0]] = SoundLoader.load(os.path.join(self.sound_dir, os.path.basename(f)))
 
     def play(self, sound_name):
-        if sound_name in self.sound_dict:
-            self.sound_dict[sound_name].play()
-        else:
-            print "sound",sound_name,"not found in", self.sound_dir
+        sound = SoundLoader.load(sound_name)
+        sound.play()
+        
+
+        # if sound_name in self.sound_dict:
+        #     self.sound_dict[sound_name].play()
+        #     self.sound_dict[sound_name].unload('sound_name')
+        # else:
+        #     print "sound",sound_name,"not found in", self.sound_dir
 
 
 
@@ -277,7 +282,7 @@ class PlayerCharacter(Widget):
     def __init__(self, **kwargs):
         super(PlayerCharacter, self).__init__(**kwargs)
         self.x = Window.width *.2
-        self.y = Window.height * .2
+        self.y = Window.height * .5
         self.size = (82, 150)
         self.size_hint = (None, None)
         self.collided_platform = ObjectProperty(None)
@@ -324,7 +329,8 @@ class PlayerCharacter(Widget):
             self.is_dropping = True
             self.offensive_move = True
             self.y_velocity = self.drop_velocity
-            self.game.sound_fx.play('sword_draw')
+            # self.game.sound_fx.play('sword_draw')
+            self.game.sound_fx.play('media/sounds/sword_draw.wav')
             log.log_event('drop')
         elif move_name == 'drop-land':
             # get the game clock running back at normal speed again
@@ -341,7 +347,8 @@ class PlayerCharacter(Widget):
             self.is_dashing = True
             self.offensive_move = True
             # self.is_jumping = False
-            self.game.sound_fx.play('sword_draw')
+            # self.game.sound_fx.play('sword_draw')
+            self.game.sound_fx.play('media/sounds/sword_draw.wav')
             Clock.schedule_once(partial(self.exec_move, 'dash-end'), .28)
             log.log_event('dash')
         elif move_name == 'dash-end':
@@ -395,7 +402,8 @@ class PlayerCharacter(Widget):
         self.exec_move('jump2')
         self.game.score.global_speed_multiplier = 1
         self.game.score.score_multiplier = 1
-        self.game.sound_fx.play('player_death')
+        # self.game.sound_fx.play('player_death')
+        self.game.sound_fx.play('media/sounds/player_death.wav')
 
         self.game.life_count.decrease_lives()
         if self.game.life_count.lives == 0:
@@ -505,26 +513,30 @@ class ScoreDisplay(Widget):
                 self.global_speed_multiplier += .2
                 self.game.global_speed = 1 * self.global_speed_multiplier
                 self.score_multiplier += .4
-                self.game.sound_fx.play('red_coin_pickup')
+                # self.game.sound_fx.play('red_coin_pickup')
+                self.game.sound_fx.play('media/sounds/red_coin_pickup.wav')
         if coin_type == 'bluecoin':
             if self.global_speed_multiplier > .6:
                 self.global_speed_multiplier -= .2
                 self.game.global_speed = 1 * self.global_speed_multiplier
                 self.score_multiplier -= .4
-                self.game.sound_fx.play('blue_coin_pickup')
+                # self.game.sound_fx.play('blue_coin_pickup')
+                self.game.sound_fx.play('media/sounds/blue_coin_pickup.wav')
         if coin_type == 'goldcoin':
             self.score += int(10 * self.score_multiplier)
             if self.sound_count == 1:
-                self.game.sound_fx.play('coin_pickup_1')
+                # self.game.sound_fx.play('coin_pickup_1')
+                self.game.sound_fx.play('media/sounds/coin_pickup_1.wav')
                 self.sound_count = 2
                 return
             if self.sound_count == 2:
-                self.game.sound_fx.play('coin_pickup_2')
+                # self.game.sound_fx.play('coin_pickup_2')
+                self.game.sound_fx.play('media/sounds/coin_pickup_2.wav')
                 self.sound_count = 1
                 return
 
 class LivesDisplay(Widget):
-    lives = NumericProperty(5)
+    lives = NumericProperty(1)
 
     def __init__(self, **kwargs):
         super(LivesDisplay, self).__init__(**kwargs)
@@ -620,12 +632,42 @@ class ConfinedEnemy(Widget):
         enemy.animation_controller.set_animation(move_name)
         return enemy
 
+    def _advance_time(self, dt):
+        for enemy in self.enemies:
+            if self.game.player_character.collide_widget(enemy) == True and self.game.player_character.offensive_move == False and enemy.killed == False and abs(enemy.x - self.game.player_character.x) < 50 and abs(enemy.y - self.game.player_character.y) < 100 and enemy.killed_player == False:
+                    log.log_event('player_killed_by_enemy')
+                    self.game.player_character.die()
+                    enemy.killed_player = True
+            if self.game.player_character.collide_widget(enemy) == True and enemy.check_health == True and self.game.player_character.x - enemy.x < 60 and abs(enemy.y - self.game.player_character.y) < 150:
+                if self.game.player_character.offensive_move == True:
+                    enemy.killed = True
+                    enemy.check_health = False
+                    self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
+                    # self.game.sound_fx.play('robot_explosion')
+                    self.game.sound_fx.play('media/sounds/robot_explosion.wav')
+                    self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
+                    self.play_killed_sound(1)
+                    log.log_event('enemy_killed')
+                    # print 'enemy killed'
+                if self.game.player_character.offensive_move == False:
+                    self.play_killed_sound(2)
+            if enemy.outside_range == True:
+                self.enemies.pop(self.enemies.index(enemy))
+                # print 'ENEMY REMOVED'
+
+            elif enemy.killed == False:
+                self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
+                enemy.texture, enemy.size = enemy.animation_controller.get_frame()
+                self.enemies_dict[enemy]['Quad'].texture = enemy.texture
+
     def play_killed_sound(self, hit_sound):
         if hit_sound == 1:
-            self.game.sound_fx.play('sword_hit1')
+            # self.game.sound_fx.play('sword_hit1')
+            self.game.sound_fx.play('media/sounds/sword_hit1.wav')
             return
         if hit_sound == 2:
-            self.game.sound_fx.play('sword_hit2')
+            # self.game.sound_fx.play('sword_hit2')
+            self.game.sound_fx.play('media/sounds/sword_hit2.wav')
             return
 
     def _render(self, dt):
@@ -640,30 +682,6 @@ class ConfinedEnemy(Widget):
                         -enemy.size[0] * 0.5, enemy.size[1] * 0.5))
                     self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
                     PopMatrix()
-            if self.game.player_character.collide_widget(enemy) == True and self.game.player_character.offensive_move == False and enemy.killed == False and abs(enemy.x - self.game.player_character.x) < 50 and abs(enemy.y - self.game.player_character.y) < 100 and enemy.killed_player == False:
-                log.log_event('player_killed_by_enemy')
-                self.game.player_character.die()
-                enemy.killed_player = True
-            if self.game.player_character.collide_widget(enemy) == True and enemy.check_health == True and self.game.player_character.x - enemy.x < 60 and abs(enemy.y - self.game.player_character.y) < 150:
-                if self.game.player_character.offensive_move == True:
-                    enemy.killed = True
-                    enemy.check_health = False
-                    self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
-                    self.game.sound_fx.play('robot_explosion')
-                    self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
-                    self.play_killed_sound(1)
-                    log.log_event('enemy_killed')
-                    print 'enemy killed'
-                if self.game.player_character.offensive_move == False:
-                    self.play_killed_sound(2)
-            if enemy.outside_range == True:
-                self.enemies.pop(self.enemies.index(enemy))
-                print 'ENEMY REMOVED'
-
-            elif enemy.killed == False:
-                self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
-                enemy.texture, enemy.size = enemy.animation_controller.get_frame()
-                self.enemies_dict[enemy]['Quad'].texture = enemy.texture
 
 class ScoringObject(object):
     x, y = -500, -500
@@ -691,7 +709,6 @@ class WorldObject(Widget):
         world_object.active = True
         world_object.outside_range = False
         world_object.type = obj_type
-        print 'initiated', obj_type
 
         if world_object.type == 'goldcoin':
             world_object.animation_controller = AnimationController('goldcoin', 'resting')
@@ -710,20 +727,8 @@ class WorldObject(Widget):
             
         return world_object
 
-
-    def _render(self):
+    def _advance_time(self, dt):
         for world_object in self.world_objects:
-            if world_object not in self.world_objects_dict:
-                self.world_objects_dict[world_object] = dict()
-                with self.canvas:
-                    PushMatrix()
-                    self.world_objects_dict[world_object]['translate'] = Translate()
-                    self.world_objects_dict[world_object]['Quad'] = Quad(texture=world_object.texture, points=(-world_object.size[0] * 0.5, -world_object.size[1] * 0.5, 
-                        world_object.size[0] * 0.5,  -world_object.size[1] * 0.5, world_object.size[0] * 0.5,  world_object.size[1] * 0.5, 
-                        -world_object.size[0] * 0.5,  world_object.size[1] * 0.5))    
-                    self.world_objects_dict[world_object]['translate'].xy = (world_object.x, world_object.y)
-                    PopMatrix()
-
             # controls world object
             if self.game.player_character.collide_widget(world_object) == True and world_object._check_collision == True and abs(world_object.x - self.game.player_character.x) < 55 and abs(world_object.y - self.game.player_character.y) < 70:
                 world_object.collected = True
@@ -737,6 +742,18 @@ class WorldObject(Widget):
                 world_object.texture, world_object.size = world_object.animation_controller.get_frame()
                 self.world_objects_dict[world_object]['Quad'].texture = world_object.texture
 
+    def _render(self):
+        for world_object in self.world_objects:
+            if world_object not in self.world_objects_dict:
+                self.world_objects_dict[world_object] = dict()
+                with self.canvas:
+                    PushMatrix()
+                    self.world_objects_dict[world_object]['translate'] = Translate()
+                    self.world_objects_dict[world_object]['Quad'] = Quad(texture=world_object.texture, points=(-world_object.size[0] * 0.5, -world_object.size[1] * 0.5, 
+                        world_object.size[0] * 0.5,  -world_object.size[1] * 0.5, world_object.size[0] * 0.5,  world_object.size[1] * 0.5, 
+                        -world_object.size[0] * 0.5,  world_object.size[1] * 0.5))    
+                    self.world_objects_dict[world_object]['translate'].xy = (world_object.x, world_object.y)
+                    PopMatrix()
 
 class Platform(object):
     x, y = -500, -500
@@ -994,7 +1011,9 @@ class ScrollingForeground(Widget):
         self._advance_time(dt)
         self._render()
         self.game.confined_enemy._render(dt)
+        self.game.confined_enemy._advance_time(dt)
         self.game.goldcoin._render()
+        self.game.goldcoin._advance_time(dt)
         Clock.schedule_once(self._update)
 
     def _advance_time(self, dt):
