@@ -232,21 +232,16 @@ class SoundController(object):
 
     def __init__(self, game=None):
         super(SoundController, self).__init__()
-        # self.sound_dict = {}
-        # for f in os.listdir(self.sound_dir):
-        #     if os.path.splitext(os.path.basename(f))[1] != '.wav': continue
-        #     self.sound_dict[os.path.splitext(os.path.basename(f))[0]] = SoundLoader.load(os.path.join(self.sound_dir, os.path.basename(f)))
+        self.sound_dict = {}
+        for f in os.listdir(self.sound_dir):
+            if os.path.splitext(os.path.basename(f))[1] != '.wav': continue
+            self.sound_dict[os.path.splitext(os.path.basename(f))[0]] = SoundLoader.load(os.path.join(self.sound_dir, os.path.basename(f)))
 
     def play(self, sound_name):
-        sound = SoundLoader.load(sound_name)
-        sound.play()
-        
-
-        # if sound_name in self.sound_dict:
-        #     self.sound_dict[sound_name].play()
-        #     self.sound_dict[sound_name].unload('sound_name')
-        # else:
-        #     print "sound",sound_name,"not found in", self.sound_dir
+        if sound_name in self.sound_dict:
+            self.sound_dict[sound_name].play()
+        else:
+            print "sound",sound_name,"not found in", self.sound_dir
 
 
 
@@ -281,7 +276,7 @@ class PlayerCharacter(Widget):
 
     def __init__(self, **kwargs):
         super(PlayerCharacter, self).__init__(**kwargs)
-        self.x = Window.width *.2
+        self.x = Window.width * .2
         self.y = Window.height * .5
         self.size = (82, 150)
         self.size_hint = (None, None)
@@ -634,23 +629,38 @@ class ConfinedEnemy(Widget):
 
     def _advance_time(self, dt):
         for enemy in self.enemies:
-            if self.game.player_character.collide_widget(enemy) == True and self.game.player_character.offensive_move == False and enemy.killed == False and abs(enemy.x - self.game.player_character.x) < 50 and abs(enemy.y - self.game.player_character.y) < 100 and enemy.killed_player == False:
-                    log.log_event('player_killed_by_enemy')
-                    self.game.player_character.die()
-                    enemy.killed_player = True
-            if self.game.player_character.collide_widget(enemy) == True and enemy.check_health == True and self.game.player_character.x - enemy.x < 60 and abs(enemy.y - self.game.player_character.y) < 150:
-                if self.game.player_character.offensive_move == True:
-                    enemy.killed = True
-                    enemy.check_health = False
-                    self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
-                    # self.game.sound_fx.play('robot_explosion')
-                    self.game.sound_fx.play('media/sounds/robot_explosion.wav')
-                    self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
-                    self.play_killed_sound(1)
-                    log.log_event('enemy_killed')
-                    # print 'enemy killed'
-                if self.game.player_character.offensive_move == False:
-                    self.play_killed_sound(2)
+            #logic for player killed by enemy
+            if self.game.player_character.collide_widget(enemy) and not self.game.player_character.offensive_move and not enemy.killed and not enemy.killed_player:
+                if  enemy.x - self.game.player_character.x < 105 and enemy.x - self.game.player_character.x > -25:
+                    if self.game.player_character.y - enemy.y < 45 and self.game.player_character.y - enemy.y > 0 \
+                    or enemy.y - self.game.player_character.y < 100 and enemy.y - self.game.player_character.y > 0:
+                        log.log_event('player_killed_by_enemy')
+                        enemy.killed_player = True
+                        self.game.player_character.y = self.game.player_character.y - 10
+                        self.game.player_character.y_velocity -= self.game.player_character.jump_velocity * .5
+                        self.game.player_character.exec_move('jump2')
+                        self.play_killed_sound(2)
+            #logic for enemy killed by player
+            if self.game.player_character.collide_widget(enemy) and enemy.check_health and not enemy.killed:
+                if self.game.player_character.offensive_move:
+                    if self.game.player_character.animation_controller.active_animation == 'drop':
+                        if enemy.x - self.game.player_character.x < 145 and enemy.x - self.game.player_character.x > 90:
+                            if self.game.player_character.y - enemy.y < 40 and self.game.player_character.y - enemy.y > -60:
+                                self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
+                                self.kill_enemy(enemy)
+                    elif self.game.player_character.animation_controller.active_animation == 'drop-land':
+                        if enemy.x - self.game.player_character.x < 135 and enemy.x - self.game.player_character.x > 90:
+                            if self.game.player_character.y - enemy.y < 40 and self.game.player_character.y - enemy.y > -60:
+                                self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
+                                self.kill_enemy(enemy)
+                    elif self.game.player_character.animation_controller.active_animation == 'dash':
+                        if enemy.x - self.game.player_character.x < 170 and enemy.x - self.game.player_character.x > 90:
+                            if self.game.player_character.y - enemy.y < 40 and self.game.player_character.y - enemy.y > -60:
+                                self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
+                                self.kill_enemy(enemy)
+                    else:
+                        self.game.player_character.offensive_move = False
+                        
             if enemy.outside_range == True:
                 self.enemies.pop(self.enemies.index(enemy))
                 # print 'ENEMY REMOVED'
@@ -659,6 +669,17 @@ class ConfinedEnemy(Widget):
                 self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
                 enemy.texture, enemy.size = enemy.animation_controller.get_frame()
                 self.enemies_dict[enemy]['Quad'].texture = enemy.texture
+
+    def kill_enemy(self, enemy):
+        enemy.killed = True
+        enemy.check_health = False
+        # self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
+        self.game.sound_fx.play('robot_explosion')
+        self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
+        self.play_killed_sound(1)
+        log.log_event('enemy_killed')
+        return enemy
+        # print 'enemy killed'
 
     def play_killed_sound(self, hit_sound):
         if hit_sound == 1:
