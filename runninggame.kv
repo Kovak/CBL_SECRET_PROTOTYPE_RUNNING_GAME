@@ -56,11 +56,15 @@
             Button:
                 size_hint: (1, .5)
                 text: 'new game'
+                font_size: root.size[1]*.06
+                background_color: (1,0,0,.8)
                 on_release: root.button_callback('new')
             Button:
                 name: 'quit'
                 size_hint: (1, .5)
                 text: 'quit :('
+                font_size: root.size[1]*.06
+                background_color: (1,0,0,.8)
                 on_release: root.button_callback('quit')
 
 <ReplayScreen>:
@@ -100,69 +104,88 @@
             Label:
                 size_hint: (1, .1)
                 text: 'You Lose!'
+                font_size: root.size[1]*.06
             GridLayout:
                 cols: 2
                 size_hint: (1, .8)
                 Label:
                     size_hint: (.2, .2)
                     text: root.hi_scores_list[0][1]
+                    font_size: root.size[1]*.04
                 Label:
                     size_hint: (.8, .2)
                     text: root.hi_scores_list[0][0]
+                    font_size: root.size[1]*.04
                 Label:
                     size_hint: (.2, .2)
                     text: root.hi_scores_list[1][1]
+                    font_size: root.size[1]*.04
                 Label:
                     size_hint: (.8, .2)
                     text: root.hi_scores_list[1][0]
+                    font_size: root.size[1]*.04
                 Label:
                     size_hint: (.2, .2)
                     text: root.hi_scores_list[2][1]
+                    font_size: root.size[1]*.04
                 Label:
                     size_hint: (.8, .2)
                     text: root.hi_scores_list[2][0]
+                    font_size: root.size[1]*.04
                 Label:
                     size_hint: (.2, .2)
                     text: root.hi_scores_list[3][1]
+                    font_size: root.size[1]*.04
                 Label:
                     size_hint: (.8, .2)
                     text: root.hi_scores_list[3][0]
+                    font_size: root.size[1]*.04
                 Label:
                     size_hint: (.2, .2)
                     text: root.hi_scores_list[4][1]
+                    font_size: root.size[1]*.04
                 Label:
                     size_hint: (.8, .2)
                     text: root.hi_scores_list[4][0]
+                    font_size: root.size[1]*.04
             BoxLayout:
                 orientation: 'horizontal'
-                size_hint: (1., .1)
-                spacing: 20
+                size_hint: (1., .2)
+                spacing: 10
                 Button:
                     size_hint: (.5, 1)
                     text: 'new game'
+                    font_size: root.size[1]*.05
+                    background_color: (1,0,0,.8)
                     on_release: root.button_callback('new')
                 Button:
                     name: 'quit'
                     size_hint: (.5, 1)
                     text: 'quit'
+                    font_size: root.size[1]*.05
+                    background_color: (1,0,0,.8)
                     on_release: root.button_callback('quit')
 
 <ScoreDisplay>:
 	Label:
 		pos: root.pos
 		size: root.size
-		font_size: root.size[1]*.28
+		font_size: root.size[1]*.29
 		halign: 'center'
 		valign: 'middle'
+        bold: True
+        color: (0,0,0,1)
 		text: 'Score: ' + str(root.score)
 
 <LivesDisplay>:
 	Label:
 		pos: root.pos
 		size: root.size
-		font_size: root.size[1]*.28
+		font_size: root.size[1]*.29
 		halign: 'center'
 		valign: 'middle'
+        bold: True
+        color: (0,0,0,1)
 		text: 'Lives: ' + str(root.lives)
 
 #<MenuInterface>:
@@ -184,8 +207,7 @@
         color: (1,1,1,1)
         text: 'FPS: ' + root.fps if root.fps != None else 'FPS:'
         bind: root.update_fps(None)
-			
-
+		
 
 <GetNameInput>:
     BoxLayout:

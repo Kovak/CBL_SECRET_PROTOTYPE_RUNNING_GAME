@@ -1,0 +1,5 @@
+resting:
+	bluecoin1.png: .25
+	bluecoin2.png: .25
+	bluecoin3.png: .25
+	bluecoin4.png: .25

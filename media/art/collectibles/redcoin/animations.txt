@@ -1,0 +1,5 @@
+resting:
+	redcoin1.png: .25
+	redcoin2.png: .25
+	redcoin3.png: .25
+	redcoin4.png: .25
