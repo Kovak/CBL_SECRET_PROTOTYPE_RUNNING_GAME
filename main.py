@@ -24,6 +24,7 @@ from functools import partial
 import random
 import os
 import urllib
+from engine import ArtContainer
 
 
 def random_variance(base, variance):
@@ -69,7 +70,7 @@ class Logger(object):
 
     def send_to_logs(self):
         for k in self.active_log_raw_items.keys():
-            self.active_log[k] = sum(self.active_log_raw_items[k])/float(len(self.active_log_raw_items))
+            self.active_log[k] = sum(self.active_log_raw_items[k])/float(len(self.active_log_raw_items[k]))
 
         params = urllib.urlencode(self.active_log)
         print 'sending request:', params
@@ -172,16 +173,16 @@ class AnimationController(Widget):
         if char_name == 'char1':
             search_dir = os.path.join(self.char_directory, char_name)
             self.active_dir = self.char_directory
-        if char_name == 'goldcoin':
+        elif char_name == 'goldcoin':
             search_dir = os.path.join(self.collectible_directory, char_name)
             self.active_dir = self.collectible_directory
-        if char_name == 'redcoin':
+        elif char_name == 'redcoin':
             search_dir = os.path.join(self.collectible_directory, char_name)
             self.active_dir = self.collectible_directory
-        if char_name == 'bluecoin':
+        elif char_name == 'bluecoin':
             search_dir = os.path.join(self.collectible_directory, char_name)
             self.active_dir = self.collectible_directory
-        if char_name == 'mechaspiderturtle':
+        elif char_name == 'mechaspiderturtle':
             search_dir = os.path.join(self.conf_enemy_dir, char_name)
             self.active_dir = self.conf_enemy_dir
 
@@ -801,7 +802,7 @@ class Platform(object):
         self.tile_size = tile_size
         self.platform_type = platform_type
         # turn filepaths into textures
-        self.textures = {x: CoreImage(texture_sources[x]).texture for x in texture_sources.keys()}
+        self.textures = {x: art_container.get(texture_sources[x]) for x in texture_sources.keys()}
         self.texture_sources = texture_sources
         
         # get number of rows and columns
@@ -995,7 +996,7 @@ class ScrollingForeground(Widget):
 
     def _create_initial_platforms(self, line):
         src = {(0,0): 'media/art/platforms/platform1.png'}
-        texture_size = CoreImage(src[(0,0)]).texture.size
+        texture_size = art_container.get(src[(0,0)]).size
         for x in range(0, Window.size[0], texture_size[0] - 50):
             # print "creating initial platform at", x
             platform = Platform(src, tile_size = texture_size, platform_type = 'floating')
@@ -1011,7 +1012,7 @@ class ScrollingForeground(Widget):
         src = random.choice([{(0,0): 'media/art/platforms/platform1.png'},
             {(0,0): 'media/art/platforms/platform2.png'},
             {(0,0): 'media/art/platforms/platform3.png'}])
-        texture_size = CoreImage(src[(0,0)]).texture.size
+        texture_size = art_container.get(src[(0,0)]).size
         platform = Platform(src, tile_size = texture_size, platform_type = 'floating')
         platform.x = Window.size[0]
         if last_height is None:
@@ -1199,16 +1200,16 @@ class ScrollImage(object):
 class ScrollingMidground(Widget):
     current_midground_x = NumericProperty(0)
     speed_multiplier = NumericProperty(1)
+    texture_keys = ['media/art/midground_objects/testarch.png',
+                    'media/art/midground_objects/testhill.png',
+                    'media/art/midground_objects/testhill2.png',
+                    'media/art/midground_objects/testhouse.png',
+                    'media/art/midground_objects/cherrytree1.png',
+                    'media/art/midground_objects/tree1.png',]
 
     def __init__(self, **kwargs):
         super(ScrollingMidground, self).__init__(**kwargs)
         self.midelements = list()
-        self.midelements.append('media/art/midground_objects/testarch.png')
-        self.midelements.append('media/art/midground_objects/testhill.png')
-        self.midelements.append('media/art/midground_objects/testhill2.png')
-        self.midelements.append('media/art/midground_objects/testhouse.png')
-        self.midelements.append('media/art/midground_objects/cherrytree1.png')
-        self.midelements.append('media/art/midground_objects/tree1.png')
         self.midgrounds = list()
         self.midground_dict = dict()
         Clock.schedule_once(self._init_midground)
@@ -1225,13 +1226,12 @@ class ScrollingMidground(Widget):
 
     def _create_midground(self):
         midground = ScrollImage()
-        rand_midground = random.randint(0, 5)
-        midground.texture = self.midelements[rand_midground]
-        texture = Image(source = self.midelements[rand_midground])
+        midground.texture_key = random.choice(self.texture_keys)
+        midground.texture = art_container.get(midground.texture_key)
         midground.spacing = random.randint(0, 500)
-        midground.size = texture.texture.size
+        midground.size = midground.texture.size
         midground.speed = midground.size[0]*.25
-        midground.y = 0 + midground.size[1]*.5
+        midground.y = midground.size[1]*.5
         midground.x = self.current_midground_x + midground.spacing
         self.current_midground_x += midground.size[0] + midground.spacing
         return midground
@@ -1243,7 +1243,7 @@ class ScrollingMidground(Widget):
                 with self.canvas:
                     PushMatrix()
                     self.midground_dict[midground]['translate'] = Translate()
-                    self.midground_dict[midground]['Quad'] = Quad(source=midground.texture, points=(-midground.size[0] * 0.5, -midground.size[1] * 0.5,
+                    self.midground_dict[midground]['Quad'] = Quad(texture=midground.texture, points=(-midground.size[0] * 0.5, -midground.size[1] * 0.5,
                         midground.size[0] * 0.5, -midground.size[1] * 0.5, midground.size[0] * 0.5, midground.size[1] * 0.5,
                         -midground.size[0] * 0.5, midground.size[1] * 0.5))
                     self.midground_dict[midground]['translate'].xy = (midground.x, midground.y)
@@ -1271,16 +1271,17 @@ class ScrollingBackground(Widget):
     current_background_x = NumericProperty(0)
     current_land_background_x = NumericProperty(0)
     current_sky_background_x = NumericProperty(0)
+    texture_keys = ['media/art/background_objects/testground1.png',
+                'media/art/background_objects/testground2.png',
+                'media/art/background_objects/cloud1.png',
+                'media/art/background_objects/cloud2.png',
+                'media/art/background_objects/cloud3.png',
+                'media/art/background_objects/cloud4.png',
+                ]
 
     def __init__(self, **kwargs):
         super(ScrollingBackground, self).__init__(**kwargs)
         self.backelements = list()
-        self.backelements.append('media/art/background_objects/testground1.png')
-        self.backelements.append('media/art/background_objects/testground2.png')
-        self.backelements.append('media/art/background_objects/cloud1.png')
-        self.backelements.append('media/art/background_objects/cloud2.png')
-        self.backelements.append('media/art/background_objects/cloud3.png')
-        self.backelements.append('media/art/background_objects/cloud4.png')
         self.backgrounds = list()
         self.background_dict = dict()
         Clock.schedule_once(self._init_background)
@@ -1298,13 +1299,13 @@ class ScrollingBackground(Widget):
 
     def _create_background(self):
         background = ScrollImage()
-        rand_background = random.randint(0, 5)
-        background.texture = self.backelements[rand_background]
-        texture = Image(source = self.backelements[rand_background])
-        background.size = texture.size
+        background.texture_key = random.choice(self.texture_keys)
+        background.texture = art_container.get(background.texture_key)
+        background.size = background.texture.size
+        print "creating background", background.texture_key, background.size
         background.speed = background.size[0]*.1
-        if rand_background < 2:
-            background.y = 0 + background.size[1]*.5
+        if 'testground' in background.texture_key:
+            background.y = background.size[1]*.5
             background.spacing = -5
             background.x = self.current_land_background_x + background.spacing
             background.sky = False
@@ -1315,7 +1316,6 @@ class ScrollingBackground(Widget):
             background.x = self.current_sky_background_x + background.spacing
             background.sky = True
             self.current_sky_background_x += background.size[0] - background.spacing
-        # self.current_background_x += background.size[0] + background.spacing
 
         return background
 
@@ -1326,7 +1326,7 @@ class ScrollingBackground(Widget):
                 with self.canvas:
                     PushMatrix()
                     self.background_dict[background]['translate'] = Translate()
-                    self.background_dict[background]['Quad'] = Quad(source=background.texture, points=(-background.size[0] * 0.5, -background.size[1] * 0.5, 
+                    self.background_dict[background]['Quad'] = Quad(texture=background.texture, points=(-background.size[0] * 0.5, -background.size[1] * 0.5, 
                         background.size[0] * 0.5,  -background.size[1] * 0.5, background.size[0] * 0.5,  background.size[1] * 0.5, 
                         -background.size[0] * 0.5,  background.size[1] * 0.5))    
                     self.background_dict[background]['translate'].xy = (background.x, background.y)
@@ -1475,6 +1475,7 @@ Factory.register('ScoreDisplay', ScoreDisplay)
 Factory.register('LivesDisplay', LivesDisplay)
 
 log = Logger()
+art_container = ArtContainer('media/art')
 
 class RunningGameApp(App):
     def build(self):
