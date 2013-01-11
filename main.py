@@ -156,9 +156,9 @@ class RunningGame(Screen):
 
 class AnimationController(Widget):
 
-    collectible_directory = 'media/art/collectibles'
-    char_directory = 'media/art/characters/'
-    conf_enemy_dir = 'media/art/characters'
+    collectible_directory = os.path.join('media','art','collectibles')
+    char_directory = os.path.join('media','art','characters')
+    conf_enemy_dir = os.path.join('media','art','characters')
     active_animation = StringProperty(None)
     active_texture_index = 0
     
@@ -228,7 +228,7 @@ class AnimationController(Widget):
 
 class SoundController(object):
 
-    sound_dir = 'media/sounds/'
+    sound_dir = os.path.join('media','sounds')
 
 
     def __init__(self, game=None):
@@ -327,7 +327,7 @@ class PlayerCharacter(Widget):
             self.offensive_move = True
             self.y_velocity = self.drop_velocity
             # self.game.sound_fx.play('sword_draw')
-            self.game.sound_fx.play('media/sounds/sword_draw.wav')
+            self.game.sound_fx.play(os.path.join('media','sounds','sword_draw.wav'))
             log.log_event('drop')
         elif move_name == 'drop-land':
             # get the game clock running back at normal speed again
@@ -345,7 +345,7 @@ class PlayerCharacter(Widget):
             self.offensive_move = True
             # self.is_jumping = False
             # self.game.sound_fx.play('sword_draw')
-            self.game.sound_fx.play('media/sounds/sword_draw.wav')
+            self.game.sound_fx.play(os.path.join('media','sounds','sword_draw.wav'))
             Clock.schedule_once(partial(self.exec_move, 'dash-end'), .28)
             log.log_event('dash')
         elif move_name == 'dash-end':
@@ -401,7 +401,7 @@ class PlayerCharacter(Widget):
         self.game.score.global_speed_multiplier = 1
         self.game.score.score_multiplier = 1
         # self.game.sound_fx.play('player_death')
-        self.game.sound_fx.play('media/sounds/player_death.wav')
+        self.game.sound_fx.play(os.path.join('media','sounds','player_death.wav'))
 
         self.game.life_count.decrease_lives()
         if self.game.life_count.lives == 0:
@@ -513,24 +513,24 @@ class ScoreDisplay(Widget):
                 self.game.global_speed = 1 * self.global_speed_multiplier
                 self.score_multiplier += .4
                 # self.game.sound_fx.play('red_coin_pickup')
-                self.game.sound_fx.play('media/sounds/red_coin_pickup.wav')
+                self.game.sound_fx.play(os.path.join('media','sounds','red_coin_pickup.wav'))
         if coin_type == 'bluecoin':
             if self.global_speed_multiplier > .6:
                 self.global_speed_multiplier -= .2
                 self.game.global_speed = 1 * self.global_speed_multiplier
                 self.score_multiplier -= .4
                 # self.game.sound_fx.play('blue_coin_pickup')
-                self.game.sound_fx.play('media/sounds/blue_coin_pickup.wav')
+                self.game.sound_fx.play(os.path.join('media','sounds','blue_coin_pickup.wav'))
         if coin_type == 'goldcoin':
             self.score += int(10 * self.score_multiplier)
             if self.sound_count == 1:
                 # self.game.sound_fx.play('coin_pickup_1')
-                self.game.sound_fx.play('media/sounds/coin_pickup_1.wav')
+                self.game.sound_fx.play(os.path.join('media','sounds','coin_pickup_1.wav'))
                 self.sound_count = 2
                 return
             if self.sound_count == 2:
                 # self.game.sound_fx.play('coin_pickup_2')
-                self.game.sound_fx.play('media/sounds/coin_pickup_2.wav')
+                self.game.sound_fx.play(os.path.join('media','sounds','coin_pickup_2.wav'))
                 self.sound_count = 1
                 return
 
@@ -690,11 +690,11 @@ class ConfinedEnemy(Widget):
     def play_killed_sound(self, hit_sound):
         if hit_sound == 1:
             # self.game.sound_fx.play('sword_hit1')
-            self.game.sound_fx.play('media/sounds/sword_hit1.wav')
+            self.game.sound_fx.play(os.path.join('media','sounds','sword_hit1.wav'))
             return
         if hit_sound == 2:
             # self.game.sound_fx.play('sword_hit2')
-            self.game.sound_fx.play('media/sounds/sword_hit2.wav')
+            self.game.sound_fx.play(os.path.join('media','sounds','sword_hit2.wav'))
             return
 
     def _render(self, dt):
@@ -896,7 +896,7 @@ class ScrollingForeground(Widget):
 
     def _create_scaffold(self, line, start_height = 0):
         # print "creating scaffold with start height", start_height
-        prefix = 'media/art/platforms/scaffolding-'
+        prefix = os.path.join('media','art','platforms','scaffolding-')
         
         # first create list of heights so we know what to build
         h = int(start_height/self.tile_size[1]) + 1
@@ -995,7 +995,7 @@ class ScrollingForeground(Widget):
         Clock.schedule_once(partial(self._init_platform, platform.line, platform.end_height), interval)
 
     def _create_initial_platforms(self, line):
-        src = {(0,0): 'media/art/platforms/platform1.png'}
+        src = {(0,0): os.path.join('media','art','platforms','platform1.png')}
         texture_size = art_container.get(src[(0,0)]).size
         for x in range(0, Window.size[0], texture_size[0] - 50):
             # print "creating initial platform at", x
@@ -1009,9 +1009,9 @@ class ScrollingForeground(Widget):
 
 
     def _create_floating_platform(self, line, last_height = None):
-        src = random.choice([{(0,0): 'media/art/platforms/platform1.png'},
-            {(0,0): 'media/art/platforms/platform2.png'},
-            {(0,0): 'media/art/platforms/platform3.png'}])
+        src = random.choice([{(0,0): os.path.join('media','art','platforms','platform1.png')},
+            {(0,0): os.path.join('media','art','platforms','platform2.png')},
+            {(0,0): os.path.join('media','art','platforms','platform3.png')}])
         texture_size = art_container.get(src[(0,0)]).size
         platform = Platform(src, tile_size = texture_size, platform_type = 'floating')
         platform.x = Window.size[0]
@@ -1138,7 +1138,7 @@ class ParticleEffects(Widget):
     dust_plume_emitting = BooleanProperty(False)
     game = ObjectProperty(None)
 
-    def emit_dust_plume(self, dt, emit_x, emit_y, name = 'ParticleEffects/game_effects/hhs-dirtplume.pex'):
+    def emit_dust_plume(self, dt, emit_x, emit_y, name = os.path.join('ParticleEffects','game_effects','hhs-dirtplume.pex')):
         self.dust_plume = ParticleSystem(name)
         self.dust_plume.emitter_x = emit_x + 32
         self.dust_plume.emitter_y = emit_y
@@ -1153,7 +1153,7 @@ class ParticleEffects(Widget):
         self.remove_widget(self.dust_plume)
         
 
-    def emit_dash_particles(self, dt, emit_x, emit_y, name = 'ParticleEffects/game_effects/hhs-dash.pex'):
+    def emit_dash_particles(self, dt, emit_x, emit_y, name = os.path.join('ParticleEffects','game_effects','hhs-dash.pex')):
         self.dash_particles = ParticleSystem(name)
         self.dash_particles.emitter_x = emit_x + 32
         self.dash_particles.emitter_y = emit_y
@@ -1165,7 +1165,7 @@ class ParticleEffects(Widget):
         self.dash_particles.stop(clear=True)
         self.remove_widget(self.dash_particles)
 
-    def goldcoin_shimmer(self, dt, emit_x, emit_y, name = 'ParticleEffects/game_effects/hhs-coinpowerup1.pex'):
+    def goldcoin_shimmer(self, dt, emit_x, emit_y, name = os.path.join('ParticleEffects','game_effects','hhs-coinpowerup1.pex')):
         return
         self.shimmer = ParticleSystem(name)
         self.shimmer.emitter_x = emit_x - 30
@@ -1178,7 +1178,7 @@ class ParticleEffects(Widget):
         self.shimmer.stop(clear=True)
         self.remove_widget(self.shimmer)
 
-    def confined_enemy_explosion(self,dt, emit_x, emit_y, name = 'ParticleEffects/game_effects/hhs-robotexplosion.pex'):
+    def confined_enemy_explosion(self,dt, emit_x, emit_y, name = os.path.join('ParticleEffects','game_effects','hhs-robotexplosion.pex')):
         self.explode = ParticleSystem(name)
         self.explode.emitter_x = emit_x
         self.explode.emitter_y = emit_y
@@ -1200,12 +1200,13 @@ class ScrollImage(object):
 class ScrollingMidground(Widget):
     current_midground_x = NumericProperty(0)
     speed_multiplier = NumericProperty(1)
-    texture_keys = ['media/art/midground_objects/testarch.png',
-                    'media/art/midground_objects/testhill.png',
-                    'media/art/midground_objects/testhill2.png',
-                    'media/art/midground_objects/testhouse.png',
-                    'media/art/midground_objects/cherrytree1.png',
-                    'media/art/midground_objects/tree1.png',]
+    texture_keys = [os.path.join('media','art','midground_objects','testarch.png'),
+                    os.path.join('media','art','midground_objects','testhill.png'),
+                    os.path.join('media','art','midground_objects','testhill2.png'),
+                    os.path.join('media','art','midground_objects','testhouse.png'),
+                    os.path.join('media','art','midground_objects','cherrytree1.png'),
+                    os.path.join('media','art','midground_objects','tree1.png'),
+                    ]
 
     def __init__(self, **kwargs):
         super(ScrollingMidground, self).__init__(**kwargs)
@@ -1271,12 +1272,12 @@ class ScrollingBackground(Widget):
     current_background_x = NumericProperty(0)
     current_land_background_x = NumericProperty(0)
     current_sky_background_x = NumericProperty(0)
-    texture_keys = ['media/art/background_objects/testground1.png',
-                'media/art/background_objects/testground2.png',
-                'media/art/background_objects/cloud1.png',
-                'media/art/background_objects/cloud2.png',
-                'media/art/background_objects/cloud3.png',
-                'media/art/background_objects/cloud4.png',
+    texture_keys = [os.path.join('media','art','background_objects','testground1.png'),
+                    os.path.join('media','art','background_objects','testground2.png'),
+                    os.path.join('media','art','background_objects','cloud1.png'),
+                    os.path.join('media','art','background_objects','cloud2.png'),
+                    os.path.join('media','art','background_objects','cloud3.png'),
+                    os.path.join('media','art','background_objects','cloud4.png'),
                 ]
 
     def __init__(self, **kwargs):
@@ -1475,7 +1476,7 @@ Factory.register('ScoreDisplay', ScoreDisplay)
 Factory.register('LivesDisplay', LivesDisplay)
 
 log = Logger()
-art_container = ArtContainer('media/art')
+art_container = ArtContainer(os.path.join('media','art'))
 
 class RunningGameApp(App):
     def build(self):
