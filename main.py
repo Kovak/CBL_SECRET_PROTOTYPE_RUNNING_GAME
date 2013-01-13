@@ -1402,7 +1402,7 @@ class MenuScreen(Screen):
 class GetNameInput(Widget):
     
     ok = BooleanProperty(False)
-    text = StringProperty("Please enter your name.")
+    text = StringProperty("")
 
 class ReplayScreen(Screen):
     foreground = ObjectProperty(None)

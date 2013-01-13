@@ -214,25 +214,32 @@
         orientation: 'vertical'
         pos: root.pos
         size: root.size
-        spacing: 20
-        padding: 20
+        spacing: 10
+        padding: 10
+        Label:
+            size_hint_y: .15
+            font_size: root.size[1]*.08
+            valign: 'middle'
+            halign: 'left'
+            #bold: True
+            text: 'Please Enter Your Name:'
         TextInput:
+            size_hint_y: .4
             multiline: False
+            focus: True
             text: root.text
             on_text: root.text = args[1]
         BoxLayout:
             orientation: 'horizontal'
+            size_hint_y: .4
             Widget:
                 size_hint_x: .2
-                size_hint_y: None
-                height: 64
+                size_hint_y: 1
             Button:
                 text: 'OK'
                 size_hint_x: .6
-                size_hint_y: None
-                height: 64
+                size_hint_y: .9
                 on_release: root.ok = True
             Widget:
                 size_hint_x: .2
-                size_hint_y: None
-                height: 64
+                size_hint_y: 1
