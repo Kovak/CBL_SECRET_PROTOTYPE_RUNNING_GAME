@@ -678,11 +678,6 @@ class ConfinedEnemy(Widget):
                 self.enemies.pop(self.enemies.index(enemy))
                 # print 'ENEMY REMOVED'
 
-            elif enemy.killed == False:
-                self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
-                enemy.texture, enemy.size = enemy.animation_controller.get_frame()
-                self.enemies_dict[enemy]['Quad'].texture = enemy.texture
-
     def kill_enemy(self, enemy):
         enemy.killed = True
         enemy.check_health = False
@@ -716,6 +711,11 @@ class ConfinedEnemy(Widget):
                         -enemy.size[0] * 0.5, enemy.size[1] * 0.5))
                     self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
                     PopMatrix()
+
+            elif enemy.killed == False:
+                self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
+                enemy.texture, enemy.size = enemy.animation_controller.get_frame()
+                self.enemies_dict[enemy]['Quad'].texture = enemy.texture
 
 class ScoringObject(object):
     x, y = -500, -500
@@ -773,10 +773,6 @@ class WorldObject(Widget):
                         self.game.score.coin_collected(world_object.type)
             if world_object.x < -200:
                 self.world_objects.pop(self.world_objects.index(world_object))
-            elif world_object.collected == False:
-                self.world_objects_dict[world_object]['translate'].xy = (world_object.x, world_object.y)
-                world_object.texture, world_object.size = world_object.animation_controller.get_frame()
-                self.world_objects_dict[world_object]['Quad'].texture = world_object.texture
 
     def _render(self):
         for world_object in self.world_objects:
@@ -791,6 +787,9 @@ class WorldObject(Widget):
                     self.world_objects_dict[world_object]['translate'].xy = (world_object.x, world_object.y)
                     PopMatrix()
 
+            elif world_object.collected == False:
+                self.world_objects_dict[world_object]['translate'].xy = (world_object.x, world_object.y)
+                
 class Platform(object):
     x, y = -500, -500
     is_partially_off_screen = True
@@ -1445,7 +1444,7 @@ class ReplayScreen(Screen):
         log.record_data('player_name', self.get_name_widget.text)
         log.send_to_logs()
 
-        if self.get_name_widget.text == "Please enter your name.": return
+        if self.get_name_widget.text == "": return
 
         if len(self.hi_scores_from_file) == 5:
             self.hi_scores_from_file = sorted([[self.get_name_widget.text, self.game_score]] + sorted(self.hi_scores_from_file, key=lambda t: t[1])[1:], key=lambda t: t[1], reverse=True)
