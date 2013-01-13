@@ -1445,7 +1445,7 @@ class ReplayScreen(Screen):
         log.record_data('player_name', self.get_name_widget.text)
         log.send_to_logs()
 
-        if self.get_name_widget.text == "Please enter your name.": return
+        if self.get_name_widget.text == "": return
 
         if len(self.hi_scores_from_file) == 5:
             self.hi_scores_from_file = sorted([[self.get_name_widget.text, self.game_score]] + sorted(self.hi_scores_from_file, key=lambda t: t[1])[1:], key=lambda t: t[1], reverse=True)
