@@ -678,6 +678,10 @@ class ConfinedEnemy(Widget):
                 self.enemies.pop(self.enemies.index(enemy))
                 # print 'ENEMY REMOVED'
 
+            if enemy.killed == False:
+                enemy.texture, enemy.size = enemy.animation_controller.get_frame()
+                self.enemies_dict[enemy]['Quad'].texture = enemy.texture
+
     def kill_enemy(self, enemy):
         enemy.killed = True
         enemy.check_health = False
@@ -714,8 +718,6 @@ class ConfinedEnemy(Widget):
 
             elif enemy.killed == False:
                 self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
-                enemy.texture, enemy.size = enemy.animation_controller.get_frame()
-                self.enemies_dict[enemy]['Quad'].texture = enemy.texture
 
 class ScoringObject(object):
     x, y = -500, -500
