@@ -768,20 +768,6 @@ class WorldObject(Widget):
             
         return world_object
 
-        if self.is_jumping: return False
-        for each in self.game.foreground.platforms:
-            if (self.center_x >= each.x) and (self.center_x <= each.x + each.size[0]):
-                tile_idx = int((self.center_x - each.x)/each.tile_size[0])
-                if tile_idx < 0 or tile_idx >= each.r: continue
-                for h in each.platform_heights[tile_idx]:
-                     if abs(self.y - (each.y + h)) < 10:
-                        self.y = each.y + h
-                        self.current_plat_height = h
-                        for enemy in each.enemies:
-                            enemy.attack_command = True
-                        return True
-        return False
-
     def add_goldcoin(self,plat_x,plat_y):
         goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
         self.world_objects.append(goldcoin)
