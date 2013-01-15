@@ -763,7 +763,6 @@ class WorldObject(Widget):
         world_object.x = plat_x
         world_object.right = world_object.x + world_object.size[0] * .5
         world_object.top = world_object.y + world_object.size[1] * .5
-        self.world_objects.append(world_object)
             
         return world_object
 
@@ -814,7 +813,7 @@ class WorldObject(Widget):
                     self.add_end_plat_coin_arc(plat_x, plat_y, plat_size)       
 
     def _advance_time(self,dt):
-        scroll_multiplier = self.speed * self.speed_multiplier * .008
+        scroll_multiplier = self.speed * self.speed_multiplier * dt 
         
          # set goldcoin x to correspond with its platform
         for goldcoin in self.world_objects:
@@ -822,6 +821,8 @@ class WorldObject(Widget):
                 if goldcoin.x < -150:
                     goldcoin.outside_range = True
                     goldcoin.active = False
+                    self.world_objects.pop(self.world_objects.index(goldcoin))
+                    self.num_goldcoins -= 1
                 else:
                     goldcoin.x -= scroll_multiplier
                     # self.game.particle_effects.goldcoin_shimmer(dt, emit_x=goldcoin.x, emit_y=goldcoin.y)
@@ -836,9 +837,7 @@ class WorldObject(Widget):
                         world_object.x = -201
                         world_object._check_collision = False
                         self.game.score.coin_collected(world_object.type)
-            if world_object.x < -149:
-                self.world_objects.pop(self.world_objects.index(world_object))
-                self.num_goldcoins -= 1
+                
 
 
     def _render(self):
