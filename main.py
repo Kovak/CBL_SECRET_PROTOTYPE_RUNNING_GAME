@@ -729,7 +729,6 @@ class ScoringObject(object):
 class WorldObject(Widget):
     speed = NumericProperty(200)
     texture = StringProperty(None)
-    num_goldcoins = NumericProperty(0)
     speed_multiplier = NumericProperty(1)
     game = ObjectProperty(None)
 
@@ -822,7 +821,6 @@ class WorldObject(Widget):
                     goldcoin.outside_range = True
                     goldcoin.active = False
                     self.world_objects.pop(self.world_objects.index(goldcoin))
-                    self.num_goldcoins -= 1
                 else:
                     goldcoin.x -= scroll_multiplier
                     # self.game.particle_effects.goldcoin_shimmer(dt, emit_x=goldcoin.x, emit_y=goldcoin.y)
