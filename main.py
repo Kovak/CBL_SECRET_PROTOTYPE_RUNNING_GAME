@@ -107,7 +107,7 @@ class RunningGame(Screen):
         self.add_widget(self.particle_effects)
         self.add_widget(self.score)
         self.add_widget(self.life_count)
-        
+        Clock.schedule_once(self._global_update)
 
     def stop(self, *largs):
         self.player_character.stop = True
@@ -150,6 +150,32 @@ class RunningGame(Screen):
     def on_global_speed(self, instance, value):
         for obj in [self.foreground, self.midground, self.background, self.world_object]:
             obj.speed_multiplier = value
+
+    def _global_update(self,dt):
+        # player character
+        self.player_character._advance_time(dt)
+        self.player_character._render()
+        # # score
+        # self.score.increase_score
+        # world_object
+        self.world_object._advance_time(dt)
+        self.world_object.scan_platforms()
+        self.world_object._check_collision()
+        self.world_object._render()
+        # foreground
+        self.foreground._advance_time(dt)
+        self.foreground._render()
+        # enemy
+        self.confined_enemy._render(dt)
+        self.confined_enemy._advance_time(dt)
+        # midground
+        self.midground._advance_time(dt)
+        self.midground._render_midground()
+        # background
+        self.background._advance_time(dt)
+        self.background._render_background()
+        
+        Clock.schedule_once(self._global_update)
 
     def add_confined_enemy(enemy):
         self.add_widget(enemy)
@@ -284,12 +310,12 @@ class PlayerCharacter(Widget):
         self.collided_platform = ObjectProperty(None)
         self.render_dict = dict()
         self.animation_controller = AnimationController('char1', 'walk')
-        Clock.schedule_once(self._update)
+        # Clock.schedule_once(self._update)
 
-    def _update(self, dt):
-        self._advance_time(dt)
-        self._render()
-        if not self.stop: Clock.schedule_once(self._update)
+    # def _update(self, dt):
+    #     self._advance_time(dt)
+    #     self._render()
+    #     if not self.stop: Clock.schedule_once(self._update)
 
     def _check_collision(self):
         if self.is_jumping: return False
@@ -738,7 +764,7 @@ class WorldObject(Widget):
         super(WorldObject, self).__init__(**kwargs)
         self.world_objects = list()
         self.world_objects_dict = dict()
-        Clock.schedule_once(self._update)
+        # Clock.schedule_once(self._update)
         # Clock.schedule_once(self.add_goldcoin)
 
     def create_world_object(self, obj_type, plat_y, plat_x):
@@ -857,13 +883,13 @@ class WorldObject(Widget):
             else:
                 self.world_objects_dict[world_object]['translate'].xy = (world_object.x, world_object.y)
 
-    def _update(self, dt):
-        self._advance_time(dt)
-        self.scan_platforms()
-        self._check_collision()
-        self._render()
+    # def _update(self, dt):
+    #     self._advance_time(dt)
+    #     self.scan_platforms()
+    #     self._check_collision()
+    #     self._render()
 
-        Clock.schedule_once(self._update)
+    #     Clock.schedule_once(self._update)
 
 
 class Platform(object):
@@ -948,7 +974,7 @@ class ScrollingForeground(Widget):
         Clock.schedule_once(partial(self._init_platform, 0, None))
         Clock.schedule_once(partial(self._init_platform, 1, None))
         self._create_initial_platforms(1)
-        Clock.schedule_once(self._update)
+        # Clock.schedule_once(self._update)
 
 
     def _init_platform(self, line_num, last_height, *largs):
@@ -1118,13 +1144,13 @@ class ScrollingForeground(Widget):
             platform.enemies.append(confined_enemy)
         return platform
 
-    def _update(self, dt):
-        self._advance_time(dt)
-        self._render()
-        self.game.confined_enemy._render(dt)
-        self.game.confined_enemy._advance_time(dt)
+    # def _update(self, dt):
+    #     self._advance_time(dt)
+    #     self._render()
+    #     self.game.confined_enemy._render(dt)
+    #     self.game.confined_enemy._advance_time(dt)
 
-        Clock.schedule_once(self._update)
+    #     Clock.schedule_once(self._update)
 
     def _advance_time(self, dt):
         for platform in self.platforms:
@@ -1255,7 +1281,7 @@ class ScrollingMidground(Widget):
         self.midgrounds = list()
         self.midground_dict = dict()
         Clock.schedule_once(self._init_midground)
-        Clock.schedule_once(self._update_midground)
+        # Clock.schedule_once(self._update_midground)
 
     def _init_midground(self,dt):
         midgroundxspace = Window.width * 2
@@ -1293,10 +1319,10 @@ class ScrollingMidground(Widget):
             else:
                 self.midground_dict[midground]['translate'].xy = (midground.x, midground.y)
 
-    def _update_midground(self, dt):
-        self._advance_time(dt)
-        self._render_midground()
-        Clock.schedule_once(self._update_midground)
+    # def _update_midground(self, dt):
+    #     self._advance_time(dt)
+    #     self._render_midground()
+    #     Clock.schedule_once(self._update_midground)
 
     def _advance_time(self, dt):
         for midground in self.midgrounds:
@@ -1327,7 +1353,7 @@ class ScrollingBackground(Widget):
         self.backgrounds = list()
         self.background_dict = dict()
         Clock.schedule_once(self._init_background)
-        Clock.schedule_once(self._update_background)
+        # Clock.schedule_once(self._update_background)
 
     def _init_background(self,dt):
         backgroundxspace = Window.width * 2.5
@@ -1376,10 +1402,10 @@ class ScrollingBackground(Widget):
             else:           
                 self.background_dict[background]['translate'].xy = (background.x, background.y)
 
-    def _update_background(self, dt):
-        self._advance_time(dt)
-        self._render_background()
-        Clock.schedule_once(self._update_background)
+    # def _update_background(self, dt):
+    #     self._advance_time(dt)
+    #     self._render_background()
+    #     Clock.schedule_once(self._update_background)
 
     def _advance_time(self, dt):
         for background in self.backgrounds:
