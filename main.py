@@ -743,7 +743,6 @@ class WorldObject(Widget):
 
     def create_world_object(self, obj_type, plat_y, plat_x):
         world_object = ScoringObject()
-        world_object.collected = False
         world_object._check_collision = True
         world_object.active = True
         world_object.outside_range = False
@@ -834,7 +833,7 @@ class WorldObject(Widget):
             if self.game.player_character.collide_widget(world_object) and world_object._check_collision:
                 if world_object.x - self.game.player_character.x < 92 and world_object.x - self.game.player_character.x > -5:
                     if self.game.player_character.y - world_object.y < 10 and self.game.player_character.y - world_object.y > -150:
-                        world_object.collected = True
+                        world_object.x = -201
                         world_object._check_collision = False
                         self.game.score.coin_collected(world_object.type)
             if world_object.x < -149:
@@ -855,10 +854,7 @@ class WorldObject(Widget):
                     self.world_objects_dict[world_object]['translate'].xy = (world_object.x, world_object.y)
                     PopMatrix()
 
-            elif world_object.collected:
-                self.world_objects_dict[world_object]['translate'].xy = (-201, world_object.y)
-
-            elif not world_object.collected:
+            else:
                 self.world_objects_dict[world_object]['translate'].xy = (world_object.x, world_object.y)
 
     def _update(self, dt):
