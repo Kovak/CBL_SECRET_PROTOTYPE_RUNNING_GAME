@@ -96,12 +96,12 @@ class RunningGame(Screen):
         self.life_count = LivesDisplay()
         self.score = ScoreDisplay(game = self)
         self.confined_enemy = ConfinedEnemy(game = self)
-        self.goldcoin = WorldObject(game = self)
+        self.world_object = WorldObject(game = self)
         self.sound_fx = SoundController(game = self)
         self.add_widget(self.background)
         self.add_widget(self.midground)
         self.add_widget(self.foreground)
-        self.add_widget(self.goldcoin)
+        self.add_widget(self.world_object)
         self.add_widget(self.confined_enemy)
         self.add_widget(self.player_character)
         self.add_widget(self.particle_effects)
@@ -112,7 +112,7 @@ class RunningGame(Screen):
     def stop(self, *largs):
         self.player_character.stop = True
         for w in [self.player_character, self.foreground, self.midground, self.background, 
-                    self.particle_effects, self.life_count ,self.score, self.confined_enemy, self.goldcoin]:
+                    self.particle_effects, self.life_count ,self.score, self.confined_enemy, self.world_object]:
             self.remove_widget(w)
             w = None
 
@@ -148,7 +148,7 @@ class RunningGame(Screen):
             touch.ud['swipe'] = 'left'
 
     def on_global_speed(self, instance, value):
-        for obj in [self.foreground, self.midground, self.background]:
+        for obj in [self.foreground, self.midground, self.background, self.world_object]:
             obj.speed_multiplier = value
 
     def add_confined_enemy(enemy):
@@ -729,12 +729,17 @@ class ScoringObject(object):
 class WorldObject(Widget):
     speed = NumericProperty(200)
     texture = StringProperty(None)
+    num_goldcoins = NumericProperty(0)
+    speed_multiplier = NumericProperty(1)
     game = ObjectProperty(None)
+
 
     def __init__(self, **kwargs):
         super(WorldObject, self).__init__(**kwargs)
         self.world_objects = list()
         self.world_objects_dict = dict()
+        Clock.schedule_once(self._update)
+        # Clock.schedule_once(self.add_goldcoin)
 
     def create_world_object(self, obj_type, plat_y, plat_x):
         world_object = ScoringObject()
@@ -759,11 +764,58 @@ class WorldObject(Widget):
         world_object.x = plat_x
         world_object.right = world_object.x + world_object.size[0] * .5
         world_object.top = world_object.y + world_object.size[1] * .5
-        self.game.goldcoin.world_objects.append(world_object)
+        self.world_objects.append(world_object)
             
         return world_object
 
-    def _advance_time(self, dt):
+        if self.is_jumping: return False
+        for each in self.game.foreground.platforms:
+            if (self.center_x >= each.x) and (self.center_x <= each.x + each.size[0]):
+                tile_idx = int((self.center_x - each.x)/each.tile_size[0])
+                if tile_idx < 0 or tile_idx >= each.r: continue
+                for h in each.platform_heights[tile_idx]:
+                     if abs(self.y - (each.y + h)) < 10:
+                        self.y = each.y + h
+                        self.current_plat_height = h
+                        for enemy in each.enemies:
+                            enemy.attack_command = True
+                        return True
+        return False
+
+
+    def add_goldcoin(self,plat_x,plat_y):
+        
+        # if self.num_goldcoins < 50:   
+        # plat_x = random.randint(400,1000)
+        # plat_y = random.randint(1,300)
+        goldcoin = self.create_world_object(obj_type='goldcoin', plat_y = plat_y, plat_x = plat_x)
+        self.world_objects.append(goldcoin)
+            # self.num_goldcoins += 1
+        # Clock.schedule_once(self.add_goldcoin)
+
+    def scan_platforms(self):
+        for platform in self.game.foreground.platforms:
+            if not platform.has_goldcoins:
+                platform.has_goldcoins = True
+                plat_x = platform.x
+                plat_y = platform.y
+                self.add_goldcoin(plat_x=plat_x, plat_y=plat_y)
+
+    def _advance_time(self,dt):
+        scroll_multiplier = self.speed * self.speed_multiplier * 1/100
+        
+         # set goldcoin x to correspond with its platform
+        for goldcoin in self.world_objects:
+            if goldcoin.active:
+                if goldcoin.x < -150:
+                    goldcoin.outside_range = True
+                    goldcoin.active = False
+                else:
+                    goldcoin.x -= scroll_multiplier
+                    # self.game.particle_effects.goldcoin_shimmer(dt, emit_x=goldcoin.x, emit_y=goldcoin.y)
+
+
+    def _check_collision(self):
         for world_object in self.world_objects:
             # controls world object
             if self.game.player_character.collide_widget(world_object) and world_object._check_collision:
@@ -771,10 +823,11 @@ class WorldObject(Widget):
                     if self.game.player_character.y - world_object.y < 10 and self.game.player_character.y - world_object.y > -150:
                         world_object.collected = True
                         world_object._check_collision = False
-                        self.world_objects_dict[world_object]['translate'].xy = (-201, world_object.y)
                         self.game.score.coin_collected(world_object.type)
-            if world_object.x < -200:
+            if world_object.x < -149:
                 self.world_objects.pop(self.world_objects.index(world_object))
+                self.num_goldcoins -= 1
+
 
     def _render(self):
         for world_object in self.world_objects:
@@ -789,8 +842,86 @@ class WorldObject(Widget):
                     self.world_objects_dict[world_object]['translate'].xy = (world_object.x, world_object.y)
                     PopMatrix()
 
-            elif world_object.collected == False:
+            elif world_object.collected:
+                self.world_objects_dict[world_object]['translate'].xy = (-201, world_object.y)
+
+            elif not world_object.collected:
                 self.world_objects_dict[world_object]['translate'].xy = (world_object.x, world_object.y)
+
+    def _update(self, dt):
+        self._advance_time(dt)
+        self.scan_platforms()
+        self._check_collision()
+        self._render()
+
+        Clock.schedule_once(self._update)
+
+
+# class WorldObject(Widget):
+#     speed = NumericProperty(200)
+#     texture = StringProperty(None)
+#     game = ObjectProperty(None)
+
+#     def __init__(self, **kwargs):
+#         super(WorldObject, self).__init__(**kwargs)
+#         self.world_objects = list()
+#         self.world_objects_dict = dict()
+
+#     def create_world_object(self, obj_type, plat_y, plat_x):
+#         world_object = ScoringObject()
+#         world_object.collected = False
+#         world_object._check_collision = True
+#         world_object.active = True
+#         world_object.outside_range = False
+#         world_object.type = obj_type
+
+#         if world_object.type == 'goldcoin':
+#             world_object.animation_controller = AnimationController('goldcoin', 'resting')
+
+#         elif world_object.type == 'redcoin':
+#             world_object.animation_controller = AnimationController('redcoin', 'resting')
+
+#         elif world_object.type == 'bluecoin':
+#             world_object.animation_controller = AnimationController('bluecoin', 'resting')
+            
+#         world_object.texture = world_object.animation_controller.textures[world_object.animation_controller.active_texture_index]
+#         world_object.texture, world_object.size = world_object.animation_controller.get_frame()
+#         world_object.y = plat_y + world_object.size[1]*2
+#         world_object.x = plat_x
+#         world_object.right = world_object.x + world_object.size[0] * .5
+#         world_object.top = world_object.y + world_object.size[1] * .5
+#         self.game.goldcoin.world_objects.append(world_object)
+            
+#         return world_object
+
+#     def _advance_time(self, dt):
+#         for world_object in self.world_objects:
+#             # controls world object
+#             if self.game.player_character.collide_widget(world_object) and world_object._check_collision:
+#                 if world_object.x - self.game.player_character.x < 92 and world_object.x - self.game.player_character.x > -5:
+#                     if self.game.player_character.y - world_object.y < 10 and self.game.player_character.y - world_object.y > -150:
+#                         world_object.collected = True
+#                         world_object._check_collision = False
+#                         self.world_objects_dict[world_object]['translate'].xy = (-201, world_object.y)
+#                         self.game.score.coin_collected(world_object.type)
+#             if world_object.x < -200:
+#                 self.world_objects.pop(self.world_objects.index(world_object))
+
+#     def _render(self):
+#         for world_object in self.world_objects:
+#             if world_object not in self.world_objects_dict:
+#                 self.world_objects_dict[world_object] = dict()
+#                 with self.canvas:
+#                     PushMatrix()
+#                     self.world_objects_dict[world_object]['translate'] = Translate()
+#                     self.world_objects_dict[world_object]['Quad'] = Quad(texture=world_object.texture, points=(-world_object.size[0] * 0.5, -world_object.size[1] * 0.5, 
+#                         world_object.size[0] * 0.5,  -world_object.size[1] * 0.5, world_object.size[0] * 0.5,  world_object.size[1] * 0.5, 
+#                         -world_object.size[0] * 0.5,  world_object.size[1] * 0.5))    
+#                     self.world_objects_dict[world_object]['translate'].xy = (world_object.x, world_object.y)
+#                     PopMatrix()
+
+#             elif world_object.collected == False:
+#                 self.world_objects_dict[world_object]['translate'].xy = (world_object.x, world_object.y)
                 
 class Platform(object):
     x, y = -500, -500
@@ -798,6 +929,7 @@ class Platform(object):
     end_height = 0
     line = 0
     earth = False
+    has_goldcoins = False
     # if Platform is an orphan, it will NOT spawn new platforms after it is on the screen.
     orphan = False
     walkable_textures = ['scaffolding-cplat-left-1.png', 'scaffolding-cplat-right-1.png', 'scaffolding-cplat-right-2.png', 
@@ -825,9 +957,11 @@ class Platform(object):
                 if (r,c) in texture_sources.keys() and os.path.basename(texture_sources[(r,c)]) in self.walkable_textures: hs.append(tile_size[1] * (c+1))
             self.platform_heights.append(hs)
         # print self.platform_heights
-        self.coins = list()
-        goldcoin = ScoringObject()
-        self.coins.append(goldcoin)
+        
+
+        # self.coins = list()
+        # goldcoin = ScoringObject()
+        # self.coins.append(goldcoin)
         self.enemies = list()
         enemy = Enemy()
         self.enemies.append(enemy)
@@ -987,8 +1121,12 @@ class ScrollingForeground(Widget):
         platform.y = 0
         platform.end_height = platform.y + heights[-1] * platform.tile_size[1]
         platform.line = line
+
+
         self.add_enemy(platform)
-        self.add_coins(platform)
+        # self.add_coins(platform)
+
+
         # print 'tile dict',col_idx
         return platform
 
@@ -1032,8 +1170,12 @@ class ScrollingForeground(Widget):
             platform.y = y
         platform.end_height = platform.y + texture_size[1]
         platform.line = line
+
+
         self.add_enemy(platform)
-        self.add_coins(platform)
+        # self.add_coins(platform)
+
+
         return platform
 
     def add_enemy(self,platform):
@@ -1043,61 +1185,67 @@ class ScrollingForeground(Widget):
             platform.enemies.append(confined_enemy)
         return platform
 
-    def add_coins(self,platform):
-        select_coin = random.randint(1,12)
-        if select_coin == 1 or select_coin == 9 or select_coin == 10 or select_coin == 12:
-            for i in range(1, int(platform.size[0]/50)):
-                plat_x = platform.x + 50 * i
-                goldcoin = self.game.goldcoin.create_world_object(obj_type='goldcoin', plat_y = platform.y + platform.size[1], plat_x = plat_x)
-                platform.coins.append(goldcoin)
-        elif select_coin == 4 or select_coin == 8:
-            if platform.y < Window.height*.65:
-                parab_length = int(platform.size[0]/80)
-                plat_x = platform.x
-                for i in range(-parab_length+1,parab_length):
-                    plat_x += 40
-                    plat_y = platform.y + platform.size[1]*1.35 + (3*parab_length - (i*i))*4
-                    goldcoin = self.game.goldcoin.create_world_object(obj_type='goldcoin', plat_y = plat_y, plat_x = plat_x)
-                    platform.coins.append(goldcoin)
-        elif select_coin == 2 or select_coin == 5 or select_coin == 7:
-            goldcoin = self.game.goldcoin.create_world_object(obj_type='redcoin', plat_y = platform.y + platform.size[1], plat_x = platform.x + platform.size[0]*.5)
-            platform.coins.append(goldcoin)
-        elif select_coin == 3:
-            goldcoin = self.game.goldcoin.create_world_object(obj_type='bluecoin', plat_y = platform.y + platform.size[1], plat_x = platform.x + platform.size[0]*.5)
-            platform.coins.append(goldcoin)
-        elif select_coin == 6 or select_coin == 11:
-            parab_length = int(platform.size[0]/80)
-            plat_x = platform.x + platform.size[0]*.9
-            for i in range(-parab_length+1,0):
-                plat_x += 40
-                plat_y = platform.y + platform.size[1]*1.35 + (3*parab_length - (i*i))*5
-                goldcoin = self.game.goldcoin.create_world_object(obj_type='goldcoin', plat_y = plat_y, plat_x = plat_x)
-                platform.coins.append(goldcoin)
-        platform.earth = True
-        return platform
+    # def add_coins(self,platform):
+    #     select_coin = random.randint(1,12)
+    #     if select_coin == 1 or select_coin == 9 or select_coin == 10 or select_coin == 12:
+    #         for i in range(1, int(platform.size[0]/50)):
+    #             plat_x = platform.x + 50 * i
+    #             goldcoin = self.game.goldcoin.create_world_object(obj_type='goldcoin', plat_y = platform.y + platform.size[1], plat_x = plat_x)
+    #             platform.coins.append(goldcoin)
+    #     elif select_coin == 4 or select_coin == 8:
+    #         if platform.y < Window.height*.65:
+    #             parab_length = int(platform.size[0]/80)
+    #             plat_x = platform.x
+    #             for i in range(-parab_length+1,parab_length):
+    #                 plat_x += 40
+    #                 plat_y = platform.y + platform.size[1]*1.35 + (3*parab_length - (i*i))*4
+    #                 goldcoin = self.game.goldcoin.create_world_object(obj_type='goldcoin', plat_y = plat_y, plat_x = plat_x)
+    #                 platform.coins.append(goldcoin)
+    #     elif select_coin == 2 or select_coin == 5 or select_coin == 7:
+    #         goldcoin = self.game.goldcoin.create_world_object(obj_type='redcoin', plat_y = platform.y + platform.size[1], plat_x = platform.x + platform.size[0]*.5)
+    #         platform.coins.append(goldcoin)
+    #     elif select_coin == 3:
+    #         goldcoin = self.game.goldcoin.create_world_object(obj_type='bluecoin', plat_y = platform.y + platform.size[1], plat_x = platform.x + platform.size[0]*.5)
+    #         platform.coins.append(goldcoin)
+    #     elif select_coin == 6 or select_coin == 11:
+    #         parab_length = int(platform.size[0]/80)
+    #         plat_x = platform.x + platform.size[0]*.9
+    #         for i in range(-parab_length+1,0):
+    #             plat_x += 40
+    #             plat_y = platform.y + platform.size[1]*1.35 + (3*parab_length - (i*i))*5
+    #             goldcoin = self.game.goldcoin.create_world_object(obj_type='goldcoin', plat_y = plat_y, plat_x = plat_x)
+    #             platform.coins.append(goldcoin)
+    #     platform.earth = True
+    #     return platform
 
     def _update(self, dt):
         self._advance_time(dt)
         self._render()
         self.game.confined_enemy._render(dt)
         self.game.confined_enemy._advance_time(dt)
-        self.game.goldcoin._render()
-        self.game.goldcoin._advance_time(dt)
+
+        # self.game.goldcoin._render()
+        # self.game.goldcoin._advance_time(dt)
+
         Clock.schedule_once(self._update)
 
     def _advance_time(self, dt):
         for platform in self.platforms:
             scroll_multiplier = self.speed * self.speed_multiplier * dt
             platform.x -= scroll_multiplier
-             # set goldcoin x to correspond with its platform
-            for goldcoin in platform.coins:
-                if goldcoin.active:
-                    if goldcoin.x < -100:
-                        goldcoin.outside_range = True
-                        goldcoin.active = False
-                    else:
-                        goldcoin.x -= scroll_multiplier
-                        # self.game.particle_effects.goldcoin_shimmer(dt, emit_x=goldcoin.x, emit_y=goldcoin.y)
+
+
+            #  # set goldcoin x to correspond with its platform
+            # for goldcoin in platform.coins:
+            #     if goldcoin.active:
+            #         if goldcoin.x < -100:
+            #             goldcoin.outside_range = True
+            #             goldcoin.active = False
+            #         else:
+            #             goldcoin.x -= scroll_multiplier
+            #             # self.game.particle_effects.goldcoin_shimmer(dt, emit_x=goldcoin.x, emit_y=goldcoin.y)
+
+
             # set confined enemy x to correspond with its platform
             for enemy in platform.enemies:
                 if enemy.active:
