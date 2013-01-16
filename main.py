@@ -95,14 +95,14 @@ class RunningGame(Screen):
         self.particle_effects = ParticleEffects(game=self)
         self.life_count = LivesDisplay()
         self.score = ScoreDisplay(game = self)
-        self.confined_enemy = ConfinedEnemy(game = self)
+        self.enemy = Enemy(game = self)
         self.world_object = WorldObject(game = self)
         self.sound_fx = SoundController(game = self)
         self.add_widget(self.background)
         self.add_widget(self.midground)
         self.add_widget(self.foreground)
         self.add_widget(self.world_object)
-        self.add_widget(self.confined_enemy)
+        self.add_widget(self.enemy)
         self.add_widget(self.player_character)
         self.add_widget(self.particle_effects)
         self.add_widget(self.score)
@@ -112,7 +112,7 @@ class RunningGame(Screen):
     def stop(self, *largs):
         self.player_character.stop = True
         for w in [self.player_character, self.foreground, self.midground, self.background, 
-                    self.particle_effects, self.life_count ,self.score, self.confined_enemy, self.world_object]:
+                    self.particle_effects, self.life_count ,self.score, self.enemy, self.world_object]:
             self.remove_widget(w)
             w = None
 
@@ -148,7 +148,7 @@ class RunningGame(Screen):
             touch.ud['swipe'] = 'left'
 
     def on_global_speed(self, instance, value):
-        for obj in [self.foreground, self.midground, self.background, self.world_object]:
+        for obj in [self.foreground, self.midground, self.background, self.world_object, self.enemy]:
             obj.speed_multiplier = value
 
     def add_confined_enemy(enemy):
@@ -301,8 +301,6 @@ class PlayerCharacter(Widget):
                      if abs(self.y - (each.y + h)) < 10:
                         self.y = each.y + h
                         self.current_plat_height = h
-                        for enemy in each.enemies:
-                            enemy.attack_command = True
                         return True
         return False
 
@@ -434,9 +432,8 @@ class PlayerCharacter(Widget):
 
         # player is in the air and not actively jumping
         if not is_on_ground:
-            for each in self.game.foreground.platforms:
-                for enemy in each.enemies:
-                    enemy.attack_command = False
+            for enemy in self.game.enemy.enemies:
+                enemy.attack_command = False
             if not self.is_jumping and not self.is_dropping and not self.is_dashing: self.exec_move('jump2')
             self.y_velocity -= self.gravity * dt
 
@@ -548,26 +545,28 @@ class LivesDisplay(Widget):
     def decrease_lives(self):
         self.lives -= 1
 
-class Enemy(object):
+class Base_Enemy(object):
     x, y = -500, -500
     texture = None
     size = (0, 0)
     active = False
     outside_range = False
 
-class ConfinedEnemy(Widget):
+class Enemy(Widget):
     speed = NumericProperty(200)
     texture = StringProperty(None)
     speed_multiplier = NumericProperty(1)
+    player_x = Window.width * .2
     game = ObjectProperty(None)
 
     def __init__(self, **kwargs):
-        super(ConfinedEnemy, self).__init__(**kwargs)
+        super(Enemy, self).__init__(**kwargs)
         self.enemies = list()
         self.enemies_dict = dict()
+        Clock.schedule_once(self._update)
 
-    def create_enemy(self, plat_y, plat_x, plat_size):
-        enemy = Enemy()
+    def create_enemy(self, plat_x, plat_y, plat_size):
+        enemy = Base_Enemy()
         enemy.test = True
         enemy.move_left = True
         enemy.move_right = False
@@ -576,7 +575,6 @@ class ConfinedEnemy(Widget):
         enemy.killed = False
         enemy.killed_player = False
         enemy.check_health = True
-        enemy.active = True
         enemy.outside_range = False
         enemy.attack_command = False
         enemy.attack_multiplier = 1
@@ -584,17 +582,57 @@ class ConfinedEnemy(Widget):
         enemy.animation_controller = AnimationController('mechaspiderturtle', 'walkleft')
         enemy.texture = enemy.animation_controller.textures[enemy.animation_controller.active_texture_index]
         enemy.texture, enemy.size = enemy.animation_controller.get_frame()
-        enemy.min = plat_x
-        enemy.max = plat_x + plat_size
+        enemy.min = plat_x + 29
+        enemy.max = plat_x + plat_size - 29
         enemy.y = plat_y + enemy.size[1]*.5
         enemy.x = plat_x
         enemy.right = enemy.x + enemy.size[0] * .5
         enemy.top = enemy.y + enemy.size[1] * .5
-        self.enemies.append(enemy)
 
         return enemy
 
-    def animate_con_enemy(self, enemy, plat_x, scroll_multiplier):
+    def scan_platforms(self):
+        for platform in self.game.foreground.platforms:
+            if not platform.has_enemy:
+                if platform.size[0] > 200:
+                    platform.has_enemy = True
+                    plat_size = platform.size[0]
+                    plat_x = platform.x
+                    plat_y = platform.y + platform.size[1]
+                    self.add_confined_enemy(plat_x, plat_y, plat_size)
+
+    def add_confined_enemy(self,plat_x,plat_y,plat_size):
+        confined_enemy = self.create_enemy(plat_x, plat_y, plat_size)
+        self.enemies.append(confined_enemy)
+
+    def kill_enemy(self, enemy):
+        enemy.killed = True
+        enemy.check_health = False
+        # self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
+        self.game.sound_fx.play('robot_explosion')
+        self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
+        self.play_killed_sound(1)
+        log.log_event('enemy_killed')
+        return enemy
+        # print 'enemy killed'
+
+    def play_killed_sound(self, hit_sound):
+        if hit_sound == 1:
+            # self.game.sound_fx.play('sword_hit1')
+            self.game.sound_fx.play(os.path.join('media','sounds','sword_hit1.wav'))
+            return
+        if hit_sound == 2:
+            # self.game.sound_fx.play('sword_hit2')
+            self.game.sound_fx.play(os.path.join('media','sounds','sword_hit2.wav'))
+            return
+
+    def check_enemy_proximity(self):
+        if self.game.player_character.dash_set:
+            for enemy in self.enemies:
+                if abs(enemy.x - self.player_x < 350) and abs(enemy.y - self.game.player_character.y < 150):
+                    enemy.attack_command = True
+
+    def animate_con_enemy(self, enemy, scroll_multiplier):
         if enemy.move_left == True:
             if enemy.anim_num == 1:
                 enemy.x -= scroll_multiplier * enemy.attack_multiplier * 1.2
@@ -629,12 +667,18 @@ class ConfinedEnemy(Widget):
             enemy.move_right = False
         if enemy.x < -100:
             enemy.outside_range = True
-            enemy.active = False
         enemy.animation_controller.set_animation(move_name)
-        return enemy
+        # return enemy
 
     def _advance_time(self, dt):
+        scroll_multiplier = self.speed * self.speed_multiplier * dt 
+        self.check_enemy_proximity()
         for enemy in self.enemies:
+            # logic for enemy animation
+            enemy.min -= scroll_multiplier
+            enemy.max -= scroll_multiplier
+            self.animate_con_enemy(enemy, scroll_multiplier)
+
             #logic for player killed by enemy
             if self.game.player_character.collide_widget(enemy) and not self.game.player_character.offensive_move and not enemy.killed and not enemy.killed_player:
                 if  enemy.x - self.game.player_character.x < 105 and enemy.x - self.game.player_character.x > -25:
@@ -682,28 +726,7 @@ class ConfinedEnemy(Widget):
                 enemy.texture, enemy.size = enemy.animation_controller.get_frame()
                 self.enemies_dict[enemy]['Quad'].texture = enemy.texture
 
-    def kill_enemy(self, enemy):
-        enemy.killed = True
-        enemy.check_health = False
-        # self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
-        self.game.sound_fx.play('robot_explosion')
-        self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
-        self.play_killed_sound(1)
-        log.log_event('enemy_killed')
-        return enemy
-        # print 'enemy killed'
-
-    def play_killed_sound(self, hit_sound):
-        if hit_sound == 1:
-            # self.game.sound_fx.play('sword_hit1')
-            self.game.sound_fx.play(os.path.join('media','sounds','sword_hit1.wav'))
-            return
-        if hit_sound == 2:
-            # self.game.sound_fx.play('sword_hit2')
-            self.game.sound_fx.play(os.path.join('media','sounds','sword_hit2.wav'))
-            return
-
-    def _render(self, dt):
+    def _render(self):
         for enemy in self.enemies:
             if enemy not in self.enemies_dict:
                 self.enemies_dict[enemy] = dict()
@@ -718,6 +741,15 @@ class ConfinedEnemy(Widget):
 
             elif enemy.killed == False:
                 self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
+
+    def _update(self, dt):
+        self._advance_time(dt)
+        self.scan_platforms()
+        # self._check_collision()
+        self._render()
+
+        Clock.schedule_once(self._update)
+
 
 class ScoringObject(object):
     x, y = -500, -500
@@ -825,7 +857,6 @@ class WorldObject(Widget):
                     goldcoin.x -= scroll_multiplier
                     # self.game.particle_effects.goldcoin_shimmer(dt, emit_x=goldcoin.x, emit_y=goldcoin.y)
 
-
     def _check_collision(self):
         for world_object in self.world_objects:
             # controls world object
@@ -836,8 +867,6 @@ class WorldObject(Widget):
                         world_object._check_collision = False
                         self.game.score.coin_collected(world_object.type)
                 
-
-
     def _render(self):
         for world_object in self.world_objects:
             if world_object not in self.world_objects_dict:
@@ -870,6 +899,7 @@ class Platform(object):
     line = 0
     earth = False
     has_goldcoins = False
+    has_enemy = False
     # if Platform is an orphan, it will NOT spawn new platforms after it is on the screen.
     orphan = False
     walkable_textures = ['scaffolding-cplat-left-1.png', 'scaffolding-cplat-right-1.png', 'scaffolding-cplat-right-2.png', 
@@ -898,9 +928,6 @@ class Platform(object):
             self.platform_heights.append(hs)
         # print self.platform_heights
         
-        self.enemies = list()
-        enemy = Enemy()
-        self.enemies.append(enemy)
 
 class ScrollingForeground(Widget):
     speed = NumericProperty(200)
@@ -1058,8 +1085,6 @@ class ScrollingForeground(Widget):
         platform.end_height = platform.y + heights[-1] * platform.tile_size[1]
         platform.line = line
 
-        self.add_enemy(platform)
-     
         # print 'tile dict',col_idx
         return platform
 
@@ -1104,22 +1129,11 @@ class ScrollingForeground(Widget):
         platform.end_height = platform.y + texture_size[1]
         platform.line = line
 
-        self.add_enemy(platform)
-
-        return platform
-
-    def add_enemy(self,platform):
-        select_enemy = random.randint(1,2)
-        if select_enemy == 1 and platform.size[0] > 200:
-            confined_enemy = self.game.confined_enemy.create_enemy(plat_y = platform.y + platform.size[1], plat_x = platform.x + platform.size[0]*.5, plat_size = platform.size[0])
-            platform.enemies.append(confined_enemy)
         return platform
 
     def _update(self, dt):
         self._advance_time(dt)
         self._render()
-        self.game.confined_enemy._render(dt)
-        self.game.confined_enemy._advance_time(dt)
 
         Clock.schedule_once(self._update)
 
@@ -1127,17 +1141,6 @@ class ScrollingForeground(Widget):
         for platform in self.platforms:
             scroll_multiplier = self.speed * self.speed_multiplier * dt
             platform.x -= scroll_multiplier
-
-            # set confined enemy x to correspond with its platform
-            for enemy in platform.enemies:
-                if enemy.active:
-                    if enemy.x < -150:
-                        enemy.outside_range = True
-                        enemy.active = False
-                    else:
-                        enemy.min = platform.x
-                        enemy.max = platform.x + platform.size[0]
-                        enemy = self.game.confined_enemy.animate_con_enemy(enemy=enemy, plat_x=platform.x, scroll_multiplier=scroll_multiplier)
 
             if platform.x < -platform.size[0]*1.5:
                 self.platforms.pop(self.platforms.index(platform))
