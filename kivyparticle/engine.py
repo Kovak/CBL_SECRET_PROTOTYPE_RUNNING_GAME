@@ -112,6 +112,7 @@ class ParticleSystem(Widget):
     def stop(self, clear=False):
         self.emission_time = 0.0
         if clear:
+            Clock.unschedule(self._update)
             self.num_particles = 0
             self.particles_dict = dict()
             self.canvas.clear()
