@@ -25,6 +25,7 @@ import random
 import os
 import urllib
 from engine import ArtContainer
+import pygame
 
 
 def random_variance(base, variance):
@@ -890,7 +891,7 @@ class WorldObject(Widget):
         self._render()
 
         Clock.schedule_once(self._update)
-
+        
 
 class Platform(object):
     x, y = -500, -500
@@ -902,6 +903,8 @@ class Platform(object):
     has_enemy = False
     # if Platform is an orphan, it will NOT spawn new platforms after it is on the screen.
     orphan = False
+    is_rendered = False
+    render_dict = dict()
     walkable_textures = ['scaffolding-cplat-left-1.png', 'scaffolding-cplat-right-1.png', 'scaffolding-cplat-right-2.png', 
             'scaffolding-mplatnopost-1.png', 'scaffolding-mplatwithpost-left-1.png', 'scaffolding-mplatwithpost-right-1.png', 
             'platform1.png', 'platform2.png', 'platform3.png']
@@ -915,11 +918,13 @@ class Platform(object):
         self.textures = {x: art_container.get(texture_sources[x]) for x in texture_sources.keys()}
         self.texture_sources = texture_sources
         
+        
         # get number of rows and columns
         self.r, self.c = [z+1 for z in reduce(lambda x, y : (max(x[0],y[0]), max(x[1],y[1])), texture_sources.keys())]
-        
         self.size = (tile_size[0] * self.r, tile_size[1] * self.c)
         
+        self.texture = self.get_batch_texture(texture_sources)
+
         self.platform_heights = []
         for r in range(self.r):
             hs = []
@@ -928,6 +933,14 @@ class Platform(object):
             self.platform_heights.append(hs)
         # print self.platform_heights
         
+
+    def get_batch_texture(self, filenames_dict):
+        txtr = Texture.create(size=self.size, colorfmt='rgba')
+        # NEEDS TO BE OPTIMIZED
+        for (r,c) in filenames_dict.keys():
+            im = pygame.image.load(filenames_dict[(r,c)])
+            txtr.blit_buffer(pygame.image.tostring(im, 'RGBA', True), pos=(self.tile_size[0]*r, self.tile_size[1]*c), size=self.tile_size, colorfmt='rgba')
+        return txtr
 
 class ScrollingForeground(Widget):
     speed = NumericProperty(200)
@@ -1159,18 +1172,13 @@ class ScrollingForeground(Widget):
                     with self.canvas:
                         PushMatrix()
                         self.platforms_dict[platform]['translate'] = Translate()
-                        for t in platform.textures.keys():
-                            self.platforms_dict[platform]['Quad'] = Quad(points=(xs * t[0], ys * t[1],
-                                        xs * t[0] + xs, ys * t[1],
-                                        xs * t[0] + xs, ys * t[1] + ys,
-                                        xs * t[0], ys * t[1] + ys,),
-                                    texture=platform.textures[t])
-
+                        self.platforms_dict[platform]['Quad'] = Quad(texture=platform.texture, points=(0, 0, platform.size[0], 0, platform.size[0], platform.size[1], 0, platform.size[1], ))
                         self.platforms_dict[platform]['translate'].xy = (platform.x, platform.y)
                         PopMatrix()
 
                 else:
                     self.platforms_dict[platform]['translate'].xy = (platform.x, platform.y)
+
 
 class ParticleEffects(Widget):
     landing_dust = ObjectProperty(ParticleSystem)
