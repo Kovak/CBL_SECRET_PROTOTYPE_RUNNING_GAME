@@ -30,7 +30,7 @@ import pygame
 
 def random_variance(base, variance):
     return base + variance * (random.random() * 2.0 - 1.0)
-
+    
 class DebugPanel(Widget):
     fps = StringProperty(None)
     start = True
@@ -292,14 +292,15 @@ class PlayerCharacter(Widget):
         self._render()
         if not self.stop: Clock.schedule_once(self._update)
 
-    def _check_collision(self):
+    def _check_collision(self, dt):
+
         if self.is_jumping: return False
         for each in self.game.foreground.platforms:
             if (self.center_x >= each.x) and (self.center_x <= each.x + each.size[0]):
                 tile_idx = int((self.center_x - each.x)/each.tile_size[0])
                 if tile_idx < 0 or tile_idx >= each.r: continue
                 for h in each.platform_heights[tile_idx]:
-                     if abs(self.y - (each.y + h)) < 10:
+                     if abs(self.y - (each.y + h)) < max(self.gravity * dt, 10):
                         self.y = each.y + h
                         self.current_plat_height = h
                         return True
@@ -414,7 +415,7 @@ class PlayerCharacter(Widget):
         self.game.manager.current = 'replay'
 
     def _advance_time(self, dt):
-        is_on_ground = self._check_collision()
+        is_on_ground = self._check_collision(dt)
         self.dash_set = is_on_ground
 
         # player was falling down and landed:
