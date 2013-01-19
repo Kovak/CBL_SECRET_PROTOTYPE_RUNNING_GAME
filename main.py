@@ -98,7 +98,6 @@ class RunningGame(Screen):
         self.score = ScoreDisplay(game = self)
         self.enemy = Enemy(game = self)
         self.world_object = WorldObject(game = self)
-        self.sound_fx = SoundController(game = self)
         self.add_widget(self.background)
         self.add_widget(self.midground)
         self.add_widget(self.foreground)
@@ -229,11 +228,8 @@ class AnimationController(Widget):
 
 class SoundController(object):
 
-    sound_dir = os.path.join('media','sounds')
-
-
-    def __init__(self, game=None):
-        super(SoundController, self).__init__()
+    def __init__(self, sound_dir):
+        self.sound_dir = sound_dir
         self.sound_dict = {}
         for f in os.listdir(self.sound_dir):
             if os.path.splitext(os.path.basename(f))[1] != '.wav': continue
@@ -326,8 +322,8 @@ class PlayerCharacter(Widget):
             self.is_dropping = True
             self.offensive_move = True
             self.y_velocity = self.drop_velocity
-            # self.game.sound_fx.play('sword_draw')
-            self.game.sound_fx.play(os.path.join('media','sounds','sword_draw.wav'))
+            # sound_container.play('sword_draw')
+            sound_container.play('sword_draw')
             log.log_event('drop')
         elif move_name == 'drop-land':
             # get the game clock running back at normal speed again
@@ -344,8 +340,8 @@ class PlayerCharacter(Widget):
             self.is_dashing = True
             self.offensive_move = True
             # self.is_jumping = False
-            # self.game.sound_fx.play('sword_draw')
-            self.game.sound_fx.play(os.path.join('media','sounds','sword_draw.wav'))
+            # sound_container.play('sword_draw')
+            sound_container.play('sword_draw')
             Clock.schedule_once(partial(self.exec_move, 'dash-end'), .28)
             log.log_event('dash')
         elif move_name == 'dash-end':
@@ -400,8 +396,8 @@ class PlayerCharacter(Widget):
         self.exec_move('jump2')
         self.game.score.global_speed_multiplier = 1
         self.game.score.score_multiplier = 1
-        # self.game.sound_fx.play('player_death')
-        self.game.sound_fx.play(os.path.join('media','sounds','player_death.wav'))
+        # sound_container.play('player_death')
+        sound_container.play('player_death')
 
         self.game.life_count.decrease_lives()
         if self.game.life_count.lives == 0:
@@ -511,25 +507,25 @@ class ScoreDisplay(Widget):
                 self.global_speed_multiplier += .2
                 self.game.global_speed = 1 * self.global_speed_multiplier
                 self.score_multiplier += .4
-                # self.game.sound_fx.play('red_coin_pickup')
-                self.game.sound_fx.play(os.path.join('media','sounds','red_coin_pickup.wav'))
+                # sound_container.play('red_coin_pickup')
+                sound_container.play('red_coin_pickup')
         if coin_type == 'bluecoin':
             if self.global_speed_multiplier > .6:
                 self.global_speed_multiplier -= .2
                 self.game.global_speed = 1 * self.global_speed_multiplier
                 self.score_multiplier -= .4
-                # self.game.sound_fx.play('blue_coin_pickup')
-                self.game.sound_fx.play(os.path.join('media','sounds','blue_coin_pickup.wav'))
+                # sound_container.play('blue_coin_pickup')
+                sound_container.play('blue_coin_pickup')
         if coin_type == 'goldcoin':
             self.score += int(10 * self.score_multiplier)
             if self.sound_count == 1:
-                # self.game.sound_fx.play('coin_pickup_1')
-                self.game.sound_fx.play(os.path.join('media','sounds','coin_pickup_1.wav'))
+                # sound_container.play('coin_pickup_1')
+                sound_container.play('coin_pickup_1')
                 self.sound_count = 2
                 return
             if self.sound_count == 2:
-                # self.game.sound_fx.play('coin_pickup_2')
-                self.game.sound_fx.play(os.path.join('media','sounds','coin_pickup_2.wav'))
+                # sound_container.play('coin_pickup_2')
+                sound_container.play('coin_pickup_2')
                 self.sound_count = 1
                 return
 
@@ -611,7 +607,7 @@ class Enemy(Widget):
         enemy.killed = True
         enemy.check_health = False
         # self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
-        self.game.sound_fx.play('robot_explosion')
+        sound_container.play('robot_explosion')
         self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
         self.play_killed_sound(1)
         log.log_event('enemy_killed')
@@ -620,12 +616,12 @@ class Enemy(Widget):
 
     def play_killed_sound(self, hit_sound):
         if hit_sound == 1:
-            # self.game.sound_fx.play('sword_hit1')
-            self.game.sound_fx.play(os.path.join('media','sounds','sword_hit1.wav'))
+            # sound_container.play('sword_hit1')
+            sound_container.play('sword_hit1')
             return
         if hit_sound == 2:
-            # self.game.sound_fx.play('sword_hit2')
-            self.game.sound_fx.play(os.path.join('media','sounds','sword_hit2.wav'))
+            # sound_container.play('sword_hit2')
+            sound_container.play('sword_hit2')
             return
 
     def check_enemy_proximity(self):
@@ -1188,8 +1184,14 @@ class ParticleEffects(Widget):
     dust_plume_emitting = BooleanProperty(False)
     game = ObjectProperty(None)
 
-    def emit_dust_plume(self, dt, emit_x, emit_y, name = os.path.join('ParticleEffects','game_effects','hhs-dirtplume.pex')):
-        self.dust_plume = ParticleSystem(name)
+    def __init__(self, **kwargs):
+        super(ParticleEffects, self).__init__(**kwargs)
+        self.dust_plume = ParticleSystem(os.path.join('ParticleEffects','game_effects','hhs-dirtplume.pex'))
+        self.dash_particles = ParticleSystem(os.path.join('ParticleEffects','game_effects','hhs-dash.pex'))
+        self.shimmer = ParticleSystem(os.path.join('ParticleEffects','game_effects','hhs-coinpowerup1.pex'))
+        self.explode = ParticleSystem(os.path.join('ParticleEffects','game_effects','hhs-robotexplosion.pex'))
+
+    def emit_dust_plume(self, dt, emit_x, emit_y):
         self.dust_plume.emitter_x = emit_x + 32
         self.dust_plume.emitter_y = emit_y
         self.dust_plume.start()
@@ -1203,8 +1205,8 @@ class ParticleEffects(Widget):
         self.remove_widget(self.dust_plume)
         
 
-    def emit_dash_particles(self, dt, emit_x, emit_y, name = os.path.join('ParticleEffects','game_effects','hhs-dash.pex')):
-        self.dash_particles = ParticleSystem(name)
+    def emit_dash_particles(self, dt, emit_x, emit_y):
+        
         self.dash_particles.emitter_x = emit_x + 32
         self.dash_particles.emitter_y = emit_y
         self.dash_particles.start()
@@ -1215,7 +1217,7 @@ class ParticleEffects(Widget):
         self.dash_particles.stop(clear=True)
         self.remove_widget(self.dash_particles)
 
-    def goldcoin_shimmer(self, dt, emit_x, emit_y, name = os.path.join('ParticleEffects','game_effects','hhs-coinpowerup1.pex')):
+    def goldcoin_shimmer(self, dt, emit_x, emit_y):
         return
         self.shimmer = ParticleSystem(name)
         self.shimmer.emitter_x = emit_x - 30
@@ -1228,8 +1230,8 @@ class ParticleEffects(Widget):
         self.shimmer.stop(clear=True)
         self.remove_widget(self.shimmer)
 
-    def confined_enemy_explosion(self,dt, emit_x, emit_y, name = os.path.join('ParticleEffects','game_effects','hhs-robotexplosion.pex')):
-        self.explode = ParticleSystem(name)
+    def confined_enemy_explosion(self,dt, emit_x, emit_y):
+        
         self.explode.emitter_x = emit_x
         self.explode.emitter_y = emit_y
         self.explode.start()
@@ -1527,6 +1529,7 @@ Factory.register('LivesDisplay', LivesDisplay)
 
 log = Logger()
 art_container = ArtContainer(os.path.join('media','art'))
+sound_container = SoundController(os.path.join('media','sounds'))
 
 class RunningGameApp(App):
     def build(self):
