@@ -300,7 +300,7 @@ class PlayerCharacter(Widget):
                 tile_idx = int((self.center_x - each.x)/each.tile_size[0])
                 if tile_idx < 0 or tile_idx >= each.r: continue
                 for h in each.platform_heights[tile_idx]:
-                     if abs(self.y - (each.y + h)) < max(self.gravity * dt, 10):
+                     if abs(self.y - (each.y + h)) < max(abs(self.y_velocity) * dt, 10):
                         self.y = each.y + h
                         self.current_plat_height = h
                         return True
