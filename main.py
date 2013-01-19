@@ -1184,8 +1184,14 @@ class ParticleEffects(Widget):
     dust_plume_emitting = BooleanProperty(False)
     game = ObjectProperty(None)
 
-    def emit_dust_plume(self, dt, emit_x, emit_y, name = os.path.join('ParticleEffects','game_effects','hhs-dirtplume.pex')):
-        self.dust_plume = ParticleSystem(name)
+    def __init__(self, **kwargs):
+        super(ParticleEffects, self).__init__(**kwargs)
+        self.dust_plume = ParticleSystem(os.path.join('ParticleEffects','game_effects','hhs-dirtplume.pex'))
+        self.dash_particles = ParticleSystem(os.path.join('ParticleEffects','game_effects','hhs-dash.pex'))
+        self.shimmer = ParticleSystem(os.path.join('ParticleEffects','game_effects','hhs-coinpowerup1.pex'))
+        self.explode = ParticleSystem(os.path.join('ParticleEffects','game_effects','hhs-robotexplosion.pex'))
+
+    def emit_dust_plume(self, dt, emit_x, emit_y):
         self.dust_plume.emitter_x = emit_x + 32
         self.dust_plume.emitter_y = emit_y
         self.dust_plume.start()
@@ -1199,8 +1205,8 @@ class ParticleEffects(Widget):
         self.remove_widget(self.dust_plume)
         
 
-    def emit_dash_particles(self, dt, emit_x, emit_y, name = os.path.join('ParticleEffects','game_effects','hhs-dash.pex')):
-        self.dash_particles = ParticleSystem(name)
+    def emit_dash_particles(self, dt, emit_x, emit_y):
+        
         self.dash_particles.emitter_x = emit_x + 32
         self.dash_particles.emitter_y = emit_y
         self.dash_particles.start()
@@ -1211,7 +1217,7 @@ class ParticleEffects(Widget):
         self.dash_particles.stop(clear=True)
         self.remove_widget(self.dash_particles)
 
-    def goldcoin_shimmer(self, dt, emit_x, emit_y, name = os.path.join('ParticleEffects','game_effects','hhs-coinpowerup1.pex')):
+    def goldcoin_shimmer(self, dt, emit_x, emit_y):
         return
         self.shimmer = ParticleSystem(name)
         self.shimmer.emitter_x = emit_x - 30
@@ -1224,8 +1230,8 @@ class ParticleEffects(Widget):
         self.shimmer.stop(clear=True)
         self.remove_widget(self.shimmer)
 
-    def confined_enemy_explosion(self,dt, emit_x, emit_y, name = os.path.join('ParticleEffects','game_effects','hhs-robotexplosion.pex')):
-        self.explode = ParticleSystem(name)
+    def confined_enemy_explosion(self,dt, emit_x, emit_y):
+        
         self.explode.emitter_x = emit_x
         self.explode.emitter_y = emit_y
         self.explode.start()

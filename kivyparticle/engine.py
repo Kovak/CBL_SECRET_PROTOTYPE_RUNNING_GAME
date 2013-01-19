@@ -106,6 +106,8 @@ class ParticleSystem(Widget):
         Clock.schedule_interval(self._update, 1.0 / 60.0)
 
     def start(self, duration=sys.maxint):
+        if self.num_particles == 0:
+            Clock.schedule_interval(self._update, 1.0 / 60.0)
         if self.emission_rate != 0:
             self.emission_time = duration
 
