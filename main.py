@@ -1154,8 +1154,8 @@ class ScrollingForeground(Widget):
         Clock.schedule_once(self._update)
 
     def _advance_time(self, dt):
-        for platform in self.platforms:
-            scroll_multiplier = self.speed * self.speed_multiplier * dt
+        scroll_multiplier = self.speed * self.speed_multiplier * dt
+        for platform in self.platforms:   
             platform.x -= scroll_multiplier
 
             if platform.x < -platform.size[0]*1.5:
@@ -1268,6 +1268,7 @@ class ScrollingMidground(Widget):
                     os.path.join('media','art','midground_objects','cherrytree1.png'),
                     os.path.join('media','art','midground_objects','tree1.png'),
                     ]
+    speed = NumericProperty(125)
 
     def __init__(self, **kwargs):
         super(ScrollingMidground, self).__init__(**kwargs)
@@ -1292,7 +1293,6 @@ class ScrollingMidground(Widget):
         midground.texture = art_container.get(midground.texture_key)
         midground.spacing = random.randint(0, 500)
         midground.size = midground.texture.size
-        midground.speed = midground.size[0]*.25
         midground.y = midground.size[1]*.5
         midground.x = self.current_midground_x + midground.spacing
         self.current_midground_x += midground.size[0] + midground.spacing
@@ -1319,8 +1319,9 @@ class ScrollingMidground(Widget):
         Clock.schedule_once(self._update_midground)
 
     def _advance_time(self, dt):
+        scroll_multiplier = self.speed * self.speed_multiplier * dt
         for midground in self.midgrounds:
-            midground.x -= midground.speed * self.speed_multiplier * dt
+            midground.x -= scroll_multiplier
             if midground.x < -midground.size[0]:
                 self.current_midground_x -= midground.size[0] + midground.spacing
                 self.midgrounds.pop(self.midgrounds.index(midground))
@@ -1405,8 +1406,9 @@ class ScrollingBackground(Widget):
         Clock.schedule_once(self._update_background)
 
     def _advance_time(self, dt):
+        scroll_multiplier = self.speed * self.speed_multiplier * dt
         for background in self.backgrounds:
-            background.x -= self.speed * self.speed_multiplier * dt
+            background.x -= scroll_multiplier
             if background.x < -background.size[0]:
                 if background.sky == False:
                     self.current_land_background_x -= background.size[0] + background.spacing
@@ -1418,33 +1420,6 @@ class ScrollingBackground(Widget):
                 del self.background_dict[background]
                 background = self._create_background()
                 self.backgrounds.append(background)
-
-# class ImageButton(Image):
-# state = StringProperty('normal')
-# background_normal = StringProperty(None)
-# background_down = StringProperty(None)
-
-# def __init__(self, **kwargs):
-# super(ImageButton, self).__init__(**kwargs)
-
-# def on_touch_down(self, touch):
-# if self.collide_point(*touch.pos):
-# touch.grab(self)
-# self.state = 'down'
-# else:
-# return False
-
-# def on_touch_up(self, touch):
-# if touch.grab_current is self:
-# self.state = 'normal'
-# touch.ungrab(self)
-
-# def on_state(self, instance, value):
-# if value == 'normal':
-# self.source = self.background_normal
-# elif value == 'down':
-# if self.background_down is not None:
-# self.source = self.background_down
 
 class MenuScreen(Screen):
     foreground = ObjectProperty(None)
