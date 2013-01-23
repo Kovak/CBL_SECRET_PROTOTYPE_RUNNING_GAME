@@ -608,7 +608,7 @@ class Enemy(Widget):
         enemy.check_health = False
         # self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
         sound_container.play('robot_explosion')
-        self.enemies_dict[enemy]['translate'].xy = (-100, enemy.y)
+        enemy.x = -100
         self.play_killed_sound(1)
         log.log_event('enemy_killed')
         return enemy
@@ -718,11 +718,14 @@ class Enemy(Widget):
                         
             if enemy.outside_range == True:
                 self.enemies.pop(self.enemies.index(enemy))
+                for each in self.enemies_dict[enemy]:
+                    self.canvas.remove(self.enemies_dict[enemy][each])
+                del self.enemies_dict[enemy]
                 # print 'ENEMY REMOVED'
 
             if enemy.killed == False:
                 enemy.texture, enemy.size = enemy.animation_controller.get_frame()
-                self.enemies_dict[enemy]['Quad'].texture = enemy.texture
+                
 
     def _render(self):
         for enemy in self.enemies:
@@ -739,6 +742,7 @@ class Enemy(Widget):
 
             elif enemy.killed == False:
                 self.enemies_dict[enemy]['translate'].xy = (enemy.x, enemy.y)
+                self.enemies_dict[enemy]['Quad'].texture = enemy.texture
 
     def _update(self, dt):
         self._advance_time(dt)
@@ -845,15 +849,17 @@ class WorldObject(Widget):
         scroll_multiplier = self.speed * self.speed_multiplier * dt 
         
          # set goldcoin x to correspond with its platform
-        for goldcoin in self.world_objects:
-            if goldcoin.active:
-                if goldcoin.x < -150:
-                    goldcoin.outside_range = True
-                    goldcoin.active = False
-                    self.world_objects.pop(self.world_objects.index(goldcoin))
+        for world_object in self.world_objects:
+            if world_object.active:
+                if world_object.x < -150:
+                    world_object.outside_range = True
+                    world_object.active = False
+                    self.world_objects.pop(self.world_objects.index(world_object))
+                    for each in self.world_objects_dict[world_object]:
+                        self.canvas.remove(self.world_objects_dict[world_object][each])
+                    del self.world_objects_dict[world_object]
                 else:
-                    goldcoin.x -= scroll_multiplier
-                    # self.game.particle_effects.goldcoin_shimmer(dt, emit_x=goldcoin.x, emit_y=goldcoin.y)
+                    world_object.x -= scroll_multiplier
 
     def _check_collision(self):
         for world_object in self.world_objects:
@@ -1154,6 +1160,9 @@ class ScrollingForeground(Widget):
 
             if platform.x < -platform.size[0]*1.5:
                 self.platforms.pop(self.platforms.index(platform))
+                for each in self.platforms_dict[platform]:
+                    self.canvas.remove(self.platforms_dict[platform][each])
+                del self.platforms_dict[platform]
             elif platform.is_partially_off_screen and platform.x + platform.size[0] < Window.size[0]:
                 self._signal_platform_on_screen(platform)
                 platform.is_partially_off_screen = False
@@ -1315,6 +1324,9 @@ class ScrollingMidground(Widget):
             if midground.x < -midground.size[0]:
                 self.current_midground_x -= midground.size[0] + midground.spacing
                 self.midgrounds.pop(self.midgrounds.index(midground))
+                for each in self.midground_dict[midground]:
+                    self.canvas.remove(self.midground_dict[midground][each])
+                del self.midground_dict[midground]
                 midground = self._create_midground()
                 self.midgrounds.append(midground)
 
@@ -1401,6 +1413,9 @@ class ScrollingBackground(Widget):
                 elif background.sky == True:
                     self.current_sky_background_x -= background.size[0] - background.spacing
                 self.backgrounds.pop(self.backgrounds.index(background))
+                for each in self.background_dict[background]:
+                    self.canvas.remove(self.background_dict[background][each])
+                del self.background_dict[background]
                 background = self._create_background()
                 self.backgrounds.append(background)
 
