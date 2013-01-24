@@ -679,8 +679,6 @@ class Enemy(Widget):
             self.animate_con_enemy(enemy, scroll_multiplier)
 
             #logic for player killed by enemy
-            if self.game.player_character.collide_widget(enemy):
-                print "player collided with enemy"
             if self.game.player_character.collide_widget(enemy) and not self.game.player_character.offensive_move and not enemy.killed and not enemy.killed_player:
                 if  enemy.x - self.game.player_character.x < 105 and enemy.x - self.game.player_character.x > -25:
                     if self.game.player_character.y - enemy.y < 45 and self.game.player_character.y - enemy.y > 0 \
