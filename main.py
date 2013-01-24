@@ -717,7 +717,7 @@ class Enemy(Widget):
                     #     self.game.player_character.offensive_move = False
                         
             if enemy.outside_range == True:
-                self.enemies.pop(self.enemies.index(enemy))
+                del self.enemies[self.enemies.index(enemy)]
                 for each in self.enemies_dict[enemy]:
                     self.canvas.remove(self.enemies_dict[enemy][each])
                 del self.enemies_dict[enemy]
@@ -854,7 +854,7 @@ class WorldObject(Widget):
                 if world_object.x < -150:
                     world_object.outside_range = True
                     world_object.active = False
-                    self.world_objects.pop(self.world_objects.index(world_object))
+                    del self.world_objects[self.world_objects.index(world_object)]
                     for each in self.world_objects_dict[world_object]:
                         self.canvas.remove(self.world_objects_dict[world_object][each])
                     del self.world_objects_dict[world_object]
@@ -1159,7 +1159,7 @@ class ScrollingForeground(Widget):
             platform.x -= scroll_multiplier
 
             if platform.x < -platform.size[0]*1.5:
-                self.platforms.pop(self.platforms.index(platform))
+                del self.platforms[self.platforms.index(platform)]
                 for each in self.platforms_dict[platform]:
                     self.canvas.remove(self.platforms_dict[platform][each])
                 del self.platforms_dict[platform]
@@ -1324,7 +1324,7 @@ class ScrollingMidground(Widget):
             midground.x -= scroll_multiplier
             if midground.x < -midground.size[0]:
                 self.current_midground_x -= midground.size[0] + midground.spacing
-                self.midgrounds.pop(self.midgrounds.index(midground))
+                del self.midgrounds[self.midgrounds.index(midground)]
                 for each in self.midground_dict[midground]:
                     self.canvas.remove(self.midground_dict[midground][each])
                 del self.midground_dict[midground]
@@ -1414,7 +1414,7 @@ class ScrollingBackground(Widget):
                     self.current_land_background_x -= background.size[0] + background.spacing
                 elif background.sky == True:
                     self.current_sky_background_x -= background.size[0] - background.spacing
-                self.backgrounds.pop(self.backgrounds.index(background))
+                del self.backgrounds[self.backgrounds.index(background)]
                 for each in self.background_dict[background]:
                     self.canvas.remove(self.background_dict[background][each])
                 del self.background_dict[background]
