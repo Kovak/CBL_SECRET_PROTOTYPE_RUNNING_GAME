@@ -13,7 +13,7 @@ from kivy.core.image import Image as CoreImage
 from kivy.uix.button import Button
 from kivy.clock import Clock
 from kivy.graphics import Rectangle, Color, Callback, Rotate, PushMatrix, PopMatrix, Translate, Quad
-from kivy.properties import NumericProperty, StringProperty, ObjectProperty, BooleanProperty, ListProperty
+from kivy.properties import NumericProperty, StringProperty, ObjectProperty, BooleanProperty, ListProperty, DictProperty
 from kivy.lang import Builder
 from kivyparticle.engine import *
 from kivy.input.motionevent import MotionEvent
@@ -259,7 +259,7 @@ class PlayerCharacter(Widget):
     jump_dash = BooleanProperty(False)
     dash_set = BooleanProperty(False)
     stop = BooleanProperty(False)
-
+    texture = ObjectProperty(None)
     drop_velocity = NumericProperty(-500)
     is_dropping = BooleanProperty(False)
 
@@ -465,6 +465,10 @@ class PlayerCharacter(Widget):
                 self.game.particle_effects.stop_dust_plume(dt)
             self.game.particle_effects.emit_dust_plume(dt, emit_x=self.x, emit_y=self.y)
             self.landed = False
+
+    def on_texture(self, dt, instance):
+        try: self.render_dict['rect'].texture = self.texture
+        except: print "Not created yet"
     
     def _render(self):
         if not self.isRendered:
@@ -478,7 +482,6 @@ class PlayerCharacter(Widget):
 
         else:
             self.render_dict['translate'].xy = (self.x, self.y)
-            self.render_dict['rect'].texture = self.texture
             self.render_dict['rect'].points = points=( 0, 0, self.size[0], 0, self.size[0], self.size[1], 0, self.size[1],)
 
 class ScoreDisplay(Widget):
@@ -568,8 +571,6 @@ class Enemy(Widget):
         enemy.test = True
         enemy.move_left = True
         enemy.move_right = False
-        enemy.right = enemy.x + enemy.size[0] * .5
-        enemy.top = enemy.y + enemy.size[1] * .5
         enemy.killed = False
         enemy.killed_player = False
         enemy.check_health = True
@@ -611,7 +612,7 @@ class Enemy(Widget):
         enemy.x = -100
         self.play_killed_sound(1)
         log.log_event('enemy_killed')
-        return enemy
+        self._del_enemy(enemy)
         # print 'enemy killed'
 
     def play_killed_sound(self, hit_sound):
@@ -678,6 +679,8 @@ class Enemy(Widget):
             self.animate_con_enemy(enemy, scroll_multiplier)
 
             #logic for player killed by enemy
+            if self.game.player_character.collide_widget(enemy):
+                print "player collided with enemy"
             if self.game.player_character.collide_widget(enemy) and not self.game.player_character.offensive_move and not enemy.killed and not enemy.killed_player:
                 if  enemy.x - self.game.player_character.x < 105 and enemy.x - self.game.player_character.x > -25:
                     if self.game.player_character.y - enemy.y < 45 and self.game.player_character.y - enemy.y > 0 \
@@ -717,14 +720,17 @@ class Enemy(Widget):
                     #     self.game.player_character.offensive_move = False
                         
             if enemy.outside_range == True:
-                del self.enemies[self.enemies.index(enemy)]
-                for each in self.enemies_dict[enemy]:
-                    self.canvas.remove(self.enemies_dict[enemy][each])
-                del self.enemies_dict[enemy]
+                self._del_enemy(enemy)
                 # print 'ENEMY REMOVED'
 
             if enemy.killed == False:
                 enemy.texture, enemy.size = enemy.animation_controller.get_frame()
+
+    def _del_enemy(self, enemy):
+        del self.enemies[self.enemies.index(enemy)]
+        for each in self.enemies_dict[enemy]:
+            self.canvas.remove(self.enemies_dict[enemy][each])
+        del self.enemies_dict[enemy]  
                 
 
     def _render(self):

@@ -103,7 +103,7 @@ class ParticleSystem(Widget):
         with self.canvas.after:
             Callback(self._reset_blend_func)
 
-        Clock.schedule_interval(self._update, 1.0 / 60.0)
+        Clock.schedule_once(self._update)
 
     def start(self, duration=sys.maxint):
         if self.num_particles == 0:
@@ -201,6 +201,7 @@ class ParticleSystem(Widget):
     def _update(self, dt):
         self._advance_time(dt)
         self._render()
+        Clock.schedule_once(self._update)
 
     def _create_particle(self):
         return Particle()
