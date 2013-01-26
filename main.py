@@ -322,14 +322,12 @@ class PlayerCharacter(Widget):
             self.is_dropping = True
             self.offensive_move = True
             self.y_velocity = self.drop_velocity
-            # sound_container.play('sword_draw')
             sound_container.play('sword_draw')
             log.log_event('drop')
         elif move_name == 'drop-land':
             # get the game clock running back at normal speed again
             anim = Animation(global_speed = 1 * self.game.score.global_speed_multiplier, duration = .5)
             anim.start(self.game)
-            # self.is_dropping = False
             self.landed = True
             self.is_jumping = False
             self.offensive_move = False
@@ -339,8 +337,6 @@ class PlayerCharacter(Widget):
             anim.start(self.game)
             self.is_dashing = True
             self.offensive_move = True
-            # self.is_jumping = False
-            # sound_container.play('sword_draw')
             sound_container.play('sword_draw')
             Clock.schedule_once(partial(self.exec_move, 'dash-end'), .28)
             log.log_event('dash')
@@ -396,7 +392,6 @@ class PlayerCharacter(Widget):
         self.exec_move('jump2')
         self.game.score.global_speed_multiplier = 1
         self.game.score.score_multiplier = 1
-        # sound_container.play('player_death')
         sound_container.play('player_death')
 
         self.game.life_count.decrease_lives()
@@ -445,12 +440,6 @@ class PlayerCharacter(Widget):
         if self.y < 0 - self.size[0]:
             log.log_event('fell_off')
             self.die()
-
-        # if self.is_dashing == True:
-        #     self.dash_time_count += 1
-        #     if self.dash_time_count == 28:
-        #         self.dash_time_count = 0
-        #         self.is_dashing = False
 
         #Animation Code:
         self.texture, self.size = self.animation_controller.get_frame()
@@ -510,24 +499,20 @@ class ScoreDisplay(Widget):
                 self.global_speed_multiplier += .2
                 self.game.global_speed = 1 * self.global_speed_multiplier
                 self.score_multiplier += .4
-                # sound_container.play('red_coin_pickup')
                 sound_container.play('red_coin_pickup')
         if coin_type == 'bluecoin':
             if self.global_speed_multiplier > .6:
                 self.global_speed_multiplier -= .2
                 self.game.global_speed = 1 * self.global_speed_multiplier
                 self.score_multiplier -= .4
-                # sound_container.play('blue_coin_pickup')
                 sound_container.play('blue_coin_pickup')
         if coin_type == 'goldcoin':
             self.score += int(10 * self.score_multiplier)
             if self.sound_count == 1:
-                # sound_container.play('coin_pickup_1')
                 sound_container.play('coin_pickup_1')
                 self.sound_count = 2
                 return
             if self.sound_count == 2:
-                # sound_container.play('coin_pickup_2')
                 sound_container.play('coin_pickup_2')
                 self.sound_count = 1
                 return
@@ -617,11 +602,9 @@ class Enemy(Widget):
 
     def play_killed_sound(self, hit_sound):
         if hit_sound == 1:
-            # sound_container.play('sword_hit1')
             sound_container.play('sword_hit1')
             return
         if hit_sound == 2:
-            # sound_container.play('sword_hit2')
             sound_container.play('sword_hit2')
             return
 
@@ -795,7 +778,6 @@ class WorldObject(Widget):
         self.world_objects = list()
         self.world_objects_dict = dict()
         Clock.schedule_once(self._update)
-        # Clock.schedule_once(self.add_goldcoin)
 
     def create_world_object(self, obj_type, plat_y, plat_x):
         world_object = ScoringObject()
@@ -813,7 +795,6 @@ class WorldObject(Widget):
         elif world_object.type == 'bluecoin':
             world_object.animation_controller = AnimationController('bluecoin', 'resting')
             
-        world_object.texture = world_object.animation_controller.textures[world_object.animation_controller.active_texture_index]
         world_object.texture, world_object.size = world_object.animation_controller.get_frame()
         world_object.y = plat_y + world_object.size[1]*2
         world_object.x = plat_x
