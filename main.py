@@ -696,9 +696,11 @@ class Enemy(Widget):
 
                 #logic for enemy killed by player
                 if enemy.check_health and not enemy.killed:
+                    current_player_anim = self.game.player_character.animation_controller.active_animation
+
                     if self.game.player_character.offensive_move:
-                        if self.game.player_character.animation_controller.active_animation == 'drop' \
-                        or self.game.player_character.animation_controller.active_animation == 'drop-land':
+                        if current_player_anim == 'drop' \
+                        or current_player_anim == 'drop-land':
                             if enemy.x - player_x_pos < 165 and enemy.x - player_x_pos > 0:
                                 if player_y_pos - enemy.y < 50 and player_y_pos - enemy.y > -140:
                                     self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
@@ -708,7 +710,7 @@ class Enemy(Widget):
                         #         if player_y_pos - enemy.y < 50 and player_y_pos - enemy.y > -140:
                         #             self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
                         #             self.kill_enemy(enemy)
-                        elif self.game.player_character.animation_controller.active_animation == 'dash':
+                        elif current_player_anim == 'dash':
                             if enemy.x - player_x_pos < 190 and enemy.x - player_x_pos > 0:
                                 if player_y_pos - enemy.y < 50 and player_y_pos - enemy.y > -140:
                                     self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
