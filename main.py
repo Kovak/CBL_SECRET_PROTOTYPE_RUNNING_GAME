@@ -631,6 +631,18 @@ class Enemy(Widget):
                 if abs(enemy.x - self.player_x < 350) and abs(enemy.y - self.game.player_character.y < 150):
                     enemy.attack_command = True
 
+    def _check_collision(self, enemy, player_x_pos, player_y_pos, player_right, player_top):
+        
+        if enemy.right < player_x_pos:
+            return False
+        if enemy.x - 29 > player_right:
+            return False
+        if enemy.top < player_y_pos:
+            return False
+        if enemy.y - 48 > player_top:
+            return False
+        return True
+
     def animate_con_enemy(self, enemy, scroll_multiplier):
         if enemy.move_left == True:
             if enemy.anim_num == 1:
@@ -672,6 +684,11 @@ class Enemy(Widget):
     def _advance_time(self, dt):
         scroll_multiplier = self.speed * self.speed_multiplier * dt 
         self.check_enemy_proximity()
+        player_x_pos = self.game.player_character.x
+        player_y_pos = self.game.player_character.y
+        player_right = self.game.player_character.right
+        player_top = self.game.player_character.top
+
         for enemy in self.enemies:
             # logic for enemy animation
             enemy.min -= scroll_multiplier
@@ -679,9 +696,7 @@ class Enemy(Widget):
             self.animate_con_enemy(enemy, scroll_multiplier)
 
             #initiates logic for enemy collision if True
-            if self.game.player_character.collide_widget(enemy):
-                player_x_pos = self.game.player_character.x
-                player_y_pos = self.game.player_character.y
+            if self._check_collision(enemy, player_x_pos, player_y_pos, player_right, player_top):
 
                 #logic for player killed by enemy
                 if not self.game.player_character.offensive_move and not enemy.killed and not enemy.killed_player:
@@ -705,11 +720,6 @@ class Enemy(Widget):
                                 if player_y_pos - enemy.y < 50 and player_y_pos - enemy.y > -140:
                                     self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
                                     self.kill_enemy(enemy)
-                        # elif self.game.player_character.animation_controller.active_animation == 'drop-land':
-                        #     if enemy.x - player_x_pos < 165 and enemy.x - player_x_pos > 0:
-                        #         if player_y_pos - enemy.y < 50 and player_y_pos - enemy.y > -140:
-                        #             self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
-                        #             self.kill_enemy(enemy)
                         elif current_player_anim == 'dash':
                             if enemy.x - player_x_pos < 190 and enemy.x - player_x_pos > 0:
                                 if player_y_pos - enemy.y < 50 and player_y_pos - enemy.y > -140:
@@ -761,7 +771,6 @@ class Enemy(Widget):
     def _update(self, dt):
         self._advance_time(dt)
         self.scan_platforms()
-        # self._check_collision()
         self._render()
 
         Clock.schedule_once(self._update)
