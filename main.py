@@ -884,12 +884,27 @@ class WorldObject(Widget):
                 else:
                     world_object.x -= scroll_multiplier
 
+    def _check_collision_with_player(self, world_object, player_x_pos, player_y_pos, player_right, player_top):
+        if world_object.right < player_x_pos:
+            return False
+        if world_object.x - 29 > player_right:
+            return False
+        if world_object.top < player_y_pos:
+            return False
+        if world_object.y - 48 > player_top:
+            return False
+        return True
+
     def _check_collision(self):
+        player_y = self.game.player_character.y
+        player_x = self.game.player_character.x
+        player_right = self.game.player_character.right
+        player_top = self.game.player_character.top
         for world_object in self.world_objects:
             # controls world object
-            if self.game.player_character.collide_widget(world_object) and world_object._check_collision:
-                if world_object.x - self.game.player_character.x < 92 and world_object.x - self.game.player_character.x > -5:
-                    if self.game.player_character.y - world_object.y < 10 and self.game.player_character.y - world_object.y > -150:
+            if self._check_collision_with_player(world_object, player_x, player_y, player_right, player_top) and world_object._check_collision:
+                if world_object.x - player_x < 92 and world_object.x - player_x > -5:
+                    if player_y - world_object.y < 10 and player_y - world_object.y > -150:
                         world_object.x = -201
                         world_object._check_collision = False
                         self.game.score.coin_collected(world_object.type)
