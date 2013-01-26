@@ -151,8 +151,6 @@ class RunningGame(Screen):
         for obj in [self.foreground, self.midground, self.background, self.world_object, self.enemy]:
             obj.speed_multiplier = value
 
-    def add_confined_enemy(enemy):
-        self.add_widget(enemy)
 
 class AnimationController(Widget):
 
