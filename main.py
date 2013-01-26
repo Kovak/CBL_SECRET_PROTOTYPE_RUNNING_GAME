@@ -1218,6 +1218,7 @@ class ParticleEffects(Widget):
 
     def __init__(self, **kwargs):
         super(ParticleEffects, self).__init__(**kwargs)
+        self.exploding = False
         self.dust_plume = ParticleSystem(os.path.join('ParticleEffects','game_effects','hhs-dirtplume.pex'))
         self.dash_particles = ParticleSystem(os.path.join('ParticleEffects','game_effects','hhs-dash.pex'))
         self.shimmer = ParticleSystem(os.path.join('ParticleEffects','game_effects','hhs-coinpowerup1.pex'))
@@ -1263,7 +1264,9 @@ class ParticleEffects(Widget):
         self.remove_widget(self.shimmer)
 
     def confined_enemy_explosion(self,dt, emit_x, emit_y):
-        
+        if self.exploding:
+            return
+        self.exploding = True
         self.explode.emitter_x = emit_x
         self.explode.emitter_y = emit_y
         self.explode.start()
@@ -1271,6 +1274,7 @@ class ParticleEffects(Widget):
         Clock.schedule_once(self.stop_explosion, .5)
 
     def stop_explosion(self, dt):
+        self.exploding = False
         self.explode.stop(clear=True)
         self.remove_widget(self.explode)
 
