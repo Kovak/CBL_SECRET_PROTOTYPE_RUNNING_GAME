@@ -678,44 +678,50 @@ class Enemy(Widget):
             enemy.max -= scroll_multiplier
             self.animate_con_enemy(enemy, scroll_multiplier)
 
-            #logic for player killed by enemy
-            if self.game.player_character.collide_widget(enemy) and not self.game.player_character.offensive_move and not enemy.killed and not enemy.killed_player:
-                if  enemy.x - self.game.player_character.x < 105 and enemy.x - self.game.player_character.x > -25:
-                    if self.game.player_character.y - enemy.y < 45 and self.game.player_character.y - enemy.y > 0 \
-                    or enemy.y - self.game.player_character.y < 100 and enemy.y - self.game.player_character.y > 0:
-                        log.log_event('player_killed_by_enemy')
-                        enemy.killed_player = True
-                        self.game.player_character.y = self.game.player_character.y - 10
-                        self.game.player_character.y_velocity -= self.game.player_character.jump_velocity * .5
-                        self.game.player_character.exec_move('jump2')
-                        self.play_killed_sound(2)
-            #logic for enemy killed by player
-            if self.game.player_character.collide_widget(enemy) and enemy.check_health and not enemy.killed:
-                if self.game.player_character.offensive_move:
-                    if self.game.player_character.animation_controller.active_animation == 'drop':
-                        if enemy.x - self.game.player_character.x < 145 and enemy.x - self.game.player_character.x > 65:
-                            if self.game.player_character.y - enemy.y < 40 and self.game.player_character.y - enemy.y > -140:
-                                self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
-                                self.kill_enemy(enemy)
-                    elif self.game.player_character.animation_controller.active_animation == 'drop-land':
-                        if enemy.x - self.game.player_character.x < 135 and enemy.x - self.game.player_character.x > 90:
-                            if self.game.player_character.y - enemy.y < 40 and self.game.player_character.y - enemy.y > -140:
-                                self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
-                                self.kill_enemy(enemy)
-                    elif self.game.player_character.animation_controller.active_animation == 'dash':
-                        if enemy.x - self.game.player_character.x < 170 and enemy.x - self.game.player_character.x > 70:
-                            if self.game.player_character.y - enemy.y < 40 and self.game.player_character.y - enemy.y > -140:
-                                self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
-                                self.kill_enemy(enemy)
-                        if enemy.x - self.game.player_character.x < 70 and enemy.x - self.game.player_character.x > -90:
+            #initiates logic for enemy collision if True
+            if self.game.player_character.collide_widget(enemy):
+                player_x_pos = self.game.player_character.x
+                player_y_pos = self.game.player_character.y
+
+                #logic for player killed by enemy
+                if not self.game.player_character.offensive_move and not enemy.killed and not enemy.killed_player:
+                    if  enemy.x - player_x_pos < 115 and enemy.x - player_x_pos > -30:
+                        if player_y_pos - enemy.y < 50 and player_y_pos - enemy.y > -175:
                             log.log_event('player_killed_by_enemy')
                             enemy.killed_player = True
-                            self.game.player_character.y = self.game.player_character.y - 10
+                            self.game.player_character.y -= 10
                             self.game.player_character.y_velocity -= self.game.player_character.jump_velocity * .5
                             self.game.player_character.exec_move('jump2')
                             self.play_killed_sound(2)
-                    # else:
-                    #     self.game.player_character.offensive_move = False
+
+                #logic for enemy killed by player
+                if enemy.check_health and not enemy.killed:
+                    if self.game.player_character.offensive_move:
+                        if self.game.player_character.animation_controller.active_animation == 'drop' \
+                        or self.game.player_character.animation_controller.active_animation == 'drop-land':
+                            if enemy.x - player_x_pos < 165 and enemy.x - player_x_pos > 0:
+                                if player_y_pos - enemy.y < 50 and player_y_pos - enemy.y > -140:
+                                    self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
+                                    self.kill_enemy(enemy)
+                        # elif self.game.player_character.animation_controller.active_animation == 'drop-land':
+                        #     if enemy.x - player_x_pos < 165 and enemy.x - player_x_pos > 0:
+                        #         if player_y_pos - enemy.y < 50 and player_y_pos - enemy.y > -140:
+                        #             self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
+                        #             self.kill_enemy(enemy)
+                        elif self.game.player_character.animation_controller.active_animation == 'dash':
+                            if enemy.x - player_x_pos < 190 and enemy.x - player_x_pos > 0:
+                                if player_y_pos - enemy.y < 50 and player_y_pos - enemy.y > -140:
+                                    self.game.particle_effects.confined_enemy_explosion(dt, emit_x=enemy.x, emit_y=enemy.y)
+                                    self.kill_enemy(enemy)
+                            if enemy.x - player_x_pos < 0 and enemy.x - player_x_pos > -90:
+                                log.log_event('player_killed_by_enemy')
+                                enemy.killed_player = True
+                                self.game.player_character.y -= 10
+                                self.game.player_character.y_velocity -= self.game.player_character.jump_velocity * .5
+                                self.game.player_character.exec_move('jump2')
+                                self.play_killed_sound(2)
+                        # else:
+                        #     self.game.player_character.offensive_move = False
                         
             if enemy.outside_range == True:
                 self._del_enemy(enemy)
@@ -723,6 +729,8 @@ class Enemy(Widget):
 
             if enemy.killed == False:
                 enemy.texture, enemy.size = enemy.animation_controller.get_frame()
+                enemy.right = enemy.x + enemy.size[0] * .5
+                enemy.top = enemy.y + enemy.size[1] * .5
 
     def _del_enemy(self, enemy):
         del self.enemies[self.enemies.index(enemy)]
