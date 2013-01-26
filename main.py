@@ -815,7 +815,7 @@ class WorldObject(Widget):
             
         world_object.texture = world_object.animation_controller.textures[world_object.animation_controller.active_texture_index]
         world_object.texture, world_object.size = world_object.animation_controller.get_frame()
-        world_object.y = plat_y + world_object.size[1]*2
+        world_object.y = plat_y
         world_object.x = plat_x
         world_object.right = world_object.x + world_object.size[0] * .5
         world_object.top = world_object.y + world_object.size[1] * .5
@@ -827,6 +827,7 @@ class WorldObject(Widget):
         self.world_objects.append(goldcoin)
 
     def add_coin_line(self,plat_x,plat_y,plat_size):
+        plat_y = plat_y + 50
         for i in range(1,plat_size-40,40):
             plat_x += 40
             goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
@@ -858,7 +859,7 @@ class WorldObject(Widget):
             if not platform.has_goldcoins:
                 platform.has_goldcoins = True
                 plat_x = platform.x
-                plat_y = platform.y + platform.size[1]*.5
+                plat_y = platform.y + platform.size[1]
                 plat_size = platform.size[0]
                 coin_layout_choice = random.choice([1,2,3])
                 if coin_layout_choice == 1:
