@@ -1228,6 +1228,7 @@ class ParticleEffects(Widget):
     def __init__(self, **kwargs):
         super(ParticleEffects, self).__init__(**kwargs)
         self.exploding = False
+        self.dashing = False
         self.dust_plume = ParticleSystem(os.path.join('ParticleEffects','game_effects','hhs-dirtplume.pex'))
         self.dash_particles = ParticleSystem(os.path.join('ParticleEffects','game_effects','hhs-dash.pex'))
         self.shimmer = ParticleSystem(os.path.join('ParticleEffects','game_effects','hhs-coinpowerup1.pex'))
@@ -1248,7 +1249,9 @@ class ParticleEffects(Widget):
         
 
     def emit_dash_particles(self, dt, emit_x, emit_y):
-        
+        if self.dashing:
+            return
+        self.dashing = True
         self.dash_particles.emitter_x = emit_x + 32
         self.dash_particles.emitter_y = emit_y
         self.dash_particles.start()
@@ -1256,6 +1259,7 @@ class ParticleEffects(Widget):
         Clock.schedule_once(self.stop_dash_particles, .5)
 
     def stop_dash_particles(self,dt):
+        self.dashing = False
         self.dash_particles.stop(clear=True)
         self.remove_widget(self.dash_particles)
 
