@@ -750,7 +750,8 @@ class Enemy(Widget):
         del self.enemies[self.enemies.index(enemy)]
         for each in self.enemies_dict[enemy]:
             self.canvas.remove(self.enemies_dict[enemy][each])
-        del self.enemies_dict[enemy]  
+        del self.enemies_dict[enemy]
+        del enemy
                 
 
     def _render(self):
@@ -884,6 +885,7 @@ class WorldObject(Widget):
                     for each in self.world_objects_dict[world_object]:
                         self.canvas.remove(self.world_objects_dict[world_object][each])
                     del self.world_objects_dict[world_object]
+                    del world_object
                 else:
                     world_object.x -= scroll_multiplier
 
@@ -1362,6 +1364,7 @@ class ScrollingMidground(Widget):
                 for each in self.midground_dict[midground]:
                     self.canvas.remove(self.midground_dict[midground][each])
                 del self.midground_dict[midground]
+                del midground
                 midground = self._create_midground()
                 self.midgrounds.append(midground)
 
@@ -1465,10 +1468,12 @@ class ScrollingBackground(Widget):
                     self.canvas.remove(self.background_dict[background][each])
                 del self.background_dict[background]
                 if background.sky == True:
+                    del background
                     background = self._create_background()
                     self.backgrounds.append(background)
                 elif background.sky == False:
                     self.current_land_background_x -= background.size[0]
+                    del background
                     background = self._create_ground_background()
                     self.backgrounds.append(background)
 
