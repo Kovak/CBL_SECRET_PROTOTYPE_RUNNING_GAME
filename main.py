@@ -829,12 +829,24 @@ class WorldObject(Widget):
         goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
         self.world_objects.append(goldcoin)
 
-    def add_coin_line(self,plat_x,plat_y,plat_size):
-        plat_y = plat_y + 50
-        for i in range(1,plat_size-40,40):
-            plat_x += 40
-            goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
-            self.world_objects.append(goldcoin)
+    def add_coin_line(self,plat_x,plat_y,plat_size, platform):
+        # plat_y = plat_y + 50
+
+        if not platform.earth:
+            plat_x = platform.x - platform.tile_size[0]*.5
+            for i in platform.platform_heights:
+                plat_x += 64
+                for l in i:
+                    plat_y = int(l)
+                    
+                    goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
+                    self.world_objects.append(goldcoin)
+
+        # else:
+        #     for i in range(1,plat_size-40,40):
+        #         plat_x += 40
+        #         goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
+        #         self.world_objects.append(goldcoin)
 
     def add_coin_arc(self,plat_x,plat_y,plat_size):
         parab_length = int(plat_size/80)
@@ -857,6 +869,16 @@ class WorldObject(Widget):
             goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
             self.world_objects.append(goldcoin)
 
+        for each in self.game.foreground.platforms:
+            if (self.center_x >= each.x) and (self.center_x <= each.x + each.size[0]):
+                tile_idx = int((self.center_x - each.x)/each.tile_size[0])
+                if tile_idx < 0 or tile_idx >= each.r: continue
+                for h in each.platform_heights[tile_idx]:
+                     if abs(self.y - (each.y + h)) < max(abs(self.y_velocity) * dt, 10):
+                        self.y = each.y + h
+                        self.current_plat_height = h
+                        return True
+
     def scan_platforms(self):
         for platform in self.game.foreground.platforms:
             if not platform.has_goldcoins:
@@ -864,13 +886,13 @@ class WorldObject(Widget):
                 plat_x = platform.x
                 plat_y = platform.y + platform.size[1]
                 plat_size = platform.size[0]
-                coin_layout_choice = random.choice([1,2,3])
+                coin_layout_choice = random.choice([1])
                 if coin_layout_choice == 1:
-                    self.add_coin_line(plat_x, plat_y, plat_size)
-                if coin_layout_choice == 2:
-                    self.add_coin_arc(plat_x, plat_y, plat_size)
-                if coin_layout_choice == 3:
-                    self.add_end_plat_coin_arc(plat_x, plat_y, plat_size)       
+                    self.add_coin_line(plat_x, plat_y, plat_size, platform)
+                # if coin_layout_choice == 2:
+                #     self.add_coin_arc(plat_x, plat_y, plat_size)
+                # if coin_layout_choice == 3:
+                #     self.add_end_plat_coin_arc(plat_x, plat_y, plat_size)       
 
     def _advance_time(self,dt):
         scroll_multiplier = self.speed * self.speed_multiplier * dt 
@@ -1175,6 +1197,7 @@ class ScrollingForeground(Widget):
             platform.y = y
         platform.end_height = platform.y + texture_size[1]
         platform.line = line
+        platform.earth = True
 
         return platform
 
