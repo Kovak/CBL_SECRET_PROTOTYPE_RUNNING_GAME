@@ -1371,12 +1371,13 @@ class ScrollingBackground(Widget):
     current_background_x = NumericProperty(0)
     current_land_background_x = NumericProperty(0)
     current_sky_background_x = NumericProperty(0)
-    texture_keys = [os.path.join('media','art','background_objects','testground1.png'),
-                    os.path.join('media','art','background_objects','testground2.png'),
-                    os.path.join('media','art','background_objects','cloud1.png'),
+    texture_sky_keys = [os.path.join('media','art','background_objects','cloud1.png'),
                     os.path.join('media','art','background_objects','cloud2.png'),
                     os.path.join('media','art','background_objects','cloud3.png'),
                     os.path.join('media','art','background_objects','cloud4.png'),
+                ]
+    texture_ground_keys = [os.path.join('media','art','background_objects','testground1.png'),
+                    os.path.join('media','art','background_objects','testground2.png'),
                 ]
 
     def __init__(self, **kwargs):
@@ -1384,34 +1385,49 @@ class ScrollingBackground(Widget):
         self.backelements = list()
         self.backgrounds = list()
         self.background_dict = dict()
+        current_land_background_x = 0
         Clock.schedule_once(self._init_background)
         Clock.schedule_once(self._update_background)
 
     def _init_background(self,dt):
-        backgroundxspace = Window.width * 2.5
-        num_back_objects = 0
-        while backgroundxspace > 0:
+        self.backgroundxspace = Window.width * 2.5
+        num_back_objects = 3
+        ground1 = self._create_ground_background()
+        ground2 = self._create_ground_background()
+        ground3 = self._create_ground_background()
+        ground4 = self._create_ground_background()
+        self.backgrounds.append(ground1)
+        self.backgrounds.append(ground2)
+        self.backgrounds.append(ground3)
+        self.backgrounds.append(ground4)
+
+        while self.backgroundxspace > 0:
             background = self._create_background()
             self.backgrounds.append(background)
-            if background.sky == False:
-                backgroundxspace -= background.size[0]
+            self.backgroundxspace -= background.size[0]
             num_back_objects += 1
+
+    def _create_ground_background(self):
+        background = ScrollImage()
+        texture_key = random.choice(self.texture_ground_keys)
+        background.texture = art_container.get(texture_key)
+        background.size = background.texture.size
+        background.y = background.size[1]*.5
+        background.x = self.current_land_background_x
+        background.sky = False
+        self.current_land_background_x += background.size[0] - 1
+        return background
 
     def _create_background(self):
         background = ScrollImage()
-        background.texture_key = random.choice(self.texture_keys)
+        background.texture_key = random.choice(self.texture_sky_keys)
         background.texture = art_container.get(background.texture_key)
         background.size = background.texture.size
         print "creating background", background.texture_key, background.size
-        background.speed = background.size[0]*.1
         if 'testground' in background.texture_key:
-            background.y = background.size[1]*.5
-            background.spacing = -5
-            background.x = self.current_land_background_x + background.spacing
-            background.sky = False
-            self.current_land_background_x += background.size[0] + background.spacing
+            pass
         else:
-            background.y = Window.height - background.size[1]*random.uniform(.2,2.5)
+            background.y = random.uniform(Window.height*.5, Window.height)
             background.spacing = random.uniform(10,20)
             background.x = self.current_sky_background_x + background.spacing
             background.sky = True
@@ -1444,16 +1460,17 @@ class ScrollingBackground(Widget):
         for background in self.backgrounds:
             background.x -= scroll_multiplier
             if background.x < -background.size[0]:
-                if background.sky == False:
-                    self.current_land_background_x -= background.size[0] + background.spacing
-                elif background.sky == True:
-                    self.current_sky_background_x -= background.size[0] - background.spacing
                 del self.backgrounds[self.backgrounds.index(background)]
                 for each in self.background_dict[background]:
                     self.canvas.remove(self.background_dict[background][each])
                 del self.background_dict[background]
-                background = self._create_background()
-                self.backgrounds.append(background)
+                if background.sky == True:
+                    background = self._create_background()
+                    self.backgrounds.append(background)
+                elif background.sky == False:
+                    self.current_land_background_x -= background.size[0]
+                    background = self._create_ground_background()
+                    self.backgrounds.append(background)
 
 class MenuScreen(Screen):
     foreground = ObjectProperty(None)
