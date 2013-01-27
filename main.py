@@ -1,3 +1,4 @@
+from memory_profiler import profile
 import kivy
 from kivy.app import App
 from kivy.base import EventLoop
@@ -26,6 +27,7 @@ import os
 import urllib
 from engine import ArtContainer
 import pygame
+import gc
 
 
 def random_variance(base, variance):
@@ -965,7 +967,10 @@ class Platform(object):
         txtr = Texture.create(size=self.size, colorfmt='rgba')
         # NEEDS TO BE OPTIMIZED
         for (r,c) in filenames_dict.keys():
-            im = pygame.image.load(filenames_dict[(r,c)])
+            im = art_container.get(filenames_dict[(r,c)])
+            if isinstance(im, Texture): 
+                del txtr
+                return im
             txtr.blit_buffer(pygame.image.tostring(im, 'RGBA', True), pos=(self.tile_size[0]*r, self.tile_size[1]*c), size=self.tile_size, colorfmt='rgba')
         return txtr
 
@@ -1187,6 +1192,7 @@ class ScrollingForeground(Widget):
                 for each in self.platforms_dict[platform]:
                     self.canvas.remove(self.platforms_dict[platform][each])
                 del self.platforms_dict[platform]
+                del platform
             elif platform.is_partially_off_screen and platform.x + platform.size[0] < Window.size[0]:
                 self._signal_platform_on_screen(platform)
                 platform.is_partially_off_screen = False
@@ -1551,11 +1557,22 @@ sound_container = SoundController(os.path.join('media','sounds'))
 
 class RunningGameApp(App):
     def build(self):
+
+        Clock.schedule_interval(self.print_time, 1.)
+        Clock.schedule_interval(self.garbage_collect_this_shit, 5.)
+
+
         sm = ScreenManager(transition = FadeTransition())
         sm.add_widget(MenuScreen(name='menu'))
         sm.add_widget(RunningGame(name='game'))
         sm.add_widget(ReplayScreen(name='replay'))
         return sm
+
+    def print_time(self, dt):
+        print "TIMESTAMP:", Clock.get_time()
+
+    def garbage_collect_this_shit(self, dt):
+        gc.collect()
 
 if __name__ == '__main__':
     RunningGameApp().run()
