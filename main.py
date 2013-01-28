@@ -505,23 +505,23 @@ class ScoreDisplay(Widget):
     def increase_score(self, dt):
         self.score += 1
 
-    def coin_collected(self, coin_type):
+    def coin_collected(self, score_type):
         log.log_event('coin_collected')
-        if coin_type == 'redcoin':
+        if score_type == 'redcoin':
             if self.global_speed_multiplier < 2:
                 self.global_speed_multiplier += .2
                 self.game.global_speed = 1 * self.global_speed_multiplier
                 self.score_multiplier += .4
                 # sound_container.play('red_coin_pickup')
                 sound_container.play('red_coin_pickup')
-        if coin_type == 'bluecoin':
+        if score_type == 'bluecoin':
             if self.global_speed_multiplier > .6:
                 self.global_speed_multiplier -= .2
                 self.game.global_speed = 1 * self.global_speed_multiplier
                 self.score_multiplier -= .4
                 # sound_container.play('blue_coin_pickup')
                 sound_container.play('blue_coin_pickup')
-        if coin_type == 'goldcoin':
+        if score_type == 'goldcoin':
             self.score += int(10 * self.score_multiplier)
             if self.sound_count == 1:
                 # sound_container.play('coin_pickup_1')
@@ -533,6 +533,8 @@ class ScoreDisplay(Widget):
                 sound_container.play('coin_pickup_2')
                 self.sound_count = 1
                 return
+        if score_type == 'enemy':
+            self.score += int(25 * self.score_multiplier)
 
 class LivesDisplay(Widget):
     lives = NumericProperty(1)
@@ -639,7 +641,9 @@ class Enemy(Widget):
         enemy.x = -100
         self.play_killed_sound(1)
         log.log_event('enemy_killed')
+        self.game.score.coin_collected('enemy')
         self._del_enemy(enemy)
+
         # print 'enemy killed'
 
     def play_killed_sound(self, hit_sound):
@@ -754,7 +758,7 @@ class Enemy(Widget):
                                     self.kill_enemy(enemy)
                             if enemy.x - player_x_pos < 0 and enemy.x - player_x_pos > -90:
                                 log.log_event('player_killed_by_enemy')
-                                enemy.killed_player = True
+                                enemy.killed = True
                                 self.game.player_character.y -= 10
                                 self.game.player_character.y_velocity -= self.game.player_character.jump_velocity * .5
                                 self.game.player_character.exec_move('jump2')
@@ -855,54 +859,48 @@ class WorldObject(Widget):
         self.world_objects.append(goldcoin)
 
     def add_coin_line(self,plat_x,plat_y,plat_size, platform):
-        # plat_y = plat_y + 50
 
         if not platform.earth:
-            plat_x = platform.x - platform.tile_size[0]*.5
+            plat_tile_size = platform.tile_size[0]
+            plat_x = platform.x - 32
             for i in platform.platform_heights:
                 plat_x += 64
                 for l in i:
-                    plat_y = int(l)
-                    
+                    plat_y = int(l) + 32
                     goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
                     self.world_objects.append(goldcoin)
 
-        # else:
-        #     for i in range(1,plat_size-40,40):
-        #         plat_x += 40
-        #         goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
-        #         self.world_objects.append(goldcoin)
+        else:
+            plat_x -= 32
+            plat_y += 32
+            num_of_coins = plat_size / 64
+            for i in range(num_of_coins):
+                plat_x += 64
+                goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
+                self.world_objects.append(goldcoin)
 
     def add_coin_arc(self,plat_x,plat_y,plat_size):
-        parab_length = int(plat_size/80)
-        plat_height_constant = plat_y
-        plat_length_constant = 4+(plat_x/100)
-        for i in range(-parab_length+1,parab_length):
-            plat_x += 40
-            plat_y = plat_height_constant + (parab_length*parab_length - (i*i))*plat_length_constant
+        plat_x -= 16
+        plat_y -= 16
+        parab_length = int(plat_size/64)*16
+
+        for i in range(-parab_length,parab_length,16):
+            plat_x += 32
+            plat_y -= i
             goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
             self.world_objects.append(goldcoin)
 
     def add_end_plat_coin_arc(self,plat_x,plat_y,plat_size):
-        parab_length = int(plat_size/80)
-        plat_height_constant = plat_y
-        plat_length_constant = 4+(plat_x/100)
-        plat_x = plat_x + plat_size - 80
-        for i in range(-parab_length+1,0):
-            plat_x += 40
-            plat_y = plat_height_constant + (parab_length*parab_length - (i*i))*plat_length_constant
+
+        plat_x += plat_size - 64
+        plat_y -= 16
+        parab_length = int(plat_size/64)*16
+
+        for i in range(-parab_length,0,16):
+            plat_x += 32
+            plat_y -= i
             goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
             self.world_objects.append(goldcoin)
-
-        for each in self.game.foreground.platforms:
-            if (self.center_x >= each.x) and (self.center_x <= each.x + each.size[0]):
-                tile_idx = int((self.center_x - each.x)/each.tile_size[0])
-                if tile_idx < 0 or tile_idx >= each.r: continue
-                for h in each.platform_heights[tile_idx]:
-                     if abs(self.y - (each.y + h)) < max(abs(self.y_velocity) * dt, 10):
-                        self.y = each.y + h
-                        self.current_plat_height = h
-                        return True
 
     def scan_platforms(self):
         for platform in self.game.foreground.platforms:
@@ -911,13 +909,15 @@ class WorldObject(Widget):
                 plat_x = platform.x
                 plat_y = platform.y + platform.size[1]
                 plat_size = platform.size[0]
-                coin_layout_choice = random.choice([1])
+                weight_layout_options = {1:10,2:3,3:3}
+                coin_layout_choice = random.choice([k for k in weight_layout_options for dummy in range(weight_layout_options[k])])
+                print coin_layout_choice
                 if coin_layout_choice == 1:
                     self.add_coin_line(plat_x, plat_y, plat_size, platform)
-                # if coin_layout_choice == 2:
-                #     self.add_coin_arc(plat_x, plat_y, plat_size)
-                # if coin_layout_choice == 3:
-                #     self.add_end_plat_coin_arc(plat_x, plat_y, plat_size)       
+                if coin_layout_choice == 2:
+                    self.add_coin_arc(plat_x, plat_y, plat_size)
+                if coin_layout_choice == 3:
+                    self.add_end_plat_coin_arc(plat_x, plat_y, plat_size)       
 
     def _advance_time(self,dt):
         scroll_multiplier = self.speed * self.speed_multiplier * dt 
@@ -1203,6 +1203,8 @@ class ScrollingForeground(Widget):
             platform.end_height = platform.y + texture_size[1]
             platform.line = line
             platform.orphan = True
+            platform.has_enemy = True
+            platform.has_goldcoins = True
             self.platforms.append(platform)
 
 
