@@ -1,4 +1,4 @@
-from memory_profiler import profile
+# from memory_profiler import profile
 import kivy
 from kivy.app import App
 from kivy.base import EventLoop
@@ -605,30 +605,31 @@ class Enemy(Widget):
     def add_confined_enemy(self,plat_x,plat_y,plat_size,platform):
         if not platform.earth:
             upper_plat = []
-            # plat_x = platform.x - platform.tile_size[0]*.5
+            plat_tile_size = platform.tile_size[0]
+
             for i in platform.platform_heights:
-                # plat_x += 64
-                upper_plat.append(max(i))
-                # for l in i:
-                #     print 'hey'
-                    # plat_y = int(l)
-                    
-                    # confined_enemy = self.create_enemy(plat_x, plat_y, plat_size)
-                    # self.enemies.append(confined_enemy)
-            upper_height = max(upper_plat)
+                try:
+                    upper_plat.append(max(i))
+                except ValueError:
+                    return
+
+            upper_height = random.choice(upper_plat)
             plat_col = upper_plat.index(upper_height)
-            plat_x = platform.x + 64*plat_col
-            plat_size = 64
+            plat_x = platform.x + plat_tile_size * plat_col
+            plat_y = upper_height
+            plat_size = 0
+
             for h in range(plat_col, len(upper_plat)):
                 if upper_plat[h] == upper_height:
-                    plat_size += 64
+                    plat_size += plat_tile_size
                 else:
                     break
             confined_enemy = self.create_enemy(plat_x, plat_y, plat_size)
             self.enemies.append(confined_enemy)
-        # else:
-        #     confined_enemy = self.create_enemy(plat_x, plat_y, plat_size)
-        #     self.enemies.append(confined_enemy)
+
+        else:
+            confined_enemy = self.create_enemy(plat_x, plat_y, plat_size)
+            self.enemies.append(confined_enemy)
 
     def kill_enemy(self, enemy):
         enemy.killed = True
