@@ -827,7 +827,6 @@ class WorldObject(Widget):
         self.world_objects = list()
         self.world_objects_dict = dict()
         Clock.schedule_once(self._update)
-        # Clock.schedule_once(self.add_goldcoin)
 
     def create_world_object(self, obj_type, plat_y, plat_x):
         world_object = ScoringObject()
@@ -854,9 +853,11 @@ class WorldObject(Widget):
             
         return world_object
 
-    def add_goldcoin(self,plat_x,plat_y):
-        goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
-        self.world_objects.append(goldcoin)
+    def add_redcoin(self,plat_x,plat_y,plat_size):
+        plat_x += plat_size/2
+        plat_y += 32
+        redcoin = self.create_world_object('redcoin', plat_y, plat_x)
+        self.world_objects.append(redcoin)
 
     def add_coin_line(self,plat_x,plat_y,plat_size, platform):
 
@@ -909,7 +910,7 @@ class WorldObject(Widget):
                 plat_x = platform.x
                 plat_y = platform.y + platform.size[1]
                 plat_size = platform.size[0]
-                weight_layout_options = {1:10,2:3,3:3}
+                weight_layout_options = {1:10,2:3,3:3,4:2}
                 coin_layout_choice = random.choice([k for k in weight_layout_options for dummy in range(weight_layout_options[k])])
                 print coin_layout_choice
                 if coin_layout_choice == 1:
@@ -917,7 +918,9 @@ class WorldObject(Widget):
                 if coin_layout_choice == 2:
                     self.add_coin_arc(plat_x, plat_y, plat_size)
                 if coin_layout_choice == 3:
-                    self.add_end_plat_coin_arc(plat_x, plat_y, plat_size)       
+                    self.add_end_plat_coin_arc(plat_x, plat_y, plat_size)
+                if coin_layout_choice== 4:
+                    self.add_redcoin(plat_x, plat_y, plat_size)  
 
     def _advance_time(self,dt):
         scroll_multiplier = self.speed * self.speed_multiplier * dt 
