@@ -1499,6 +1499,7 @@ class ReplayScreen(Screen):
     foreground = ObjectProperty(None)
     hi_scores_list = ListProperty([("-", "0")]*5)
     game_score = 0
+    saved = False
 
     def __init__(self, **kwargs):
         super(ReplayScreen, self).__init__(**kwargs)
@@ -1506,23 +1507,18 @@ class ReplayScreen(Screen):
     def on_transition_state(self, instance, value):
         if value != 'in':
             return
+
         log.record_data('game_score', self.game_score)
 
-        self.hi_scores_from_file = []
-        try:
-            with open('hi_scores', 'r') as hi_score_file:
-                for line in hi_score_file:
-                    if line.strip() == '': continue
-                    ls = [x.strip() for x in line.split(':')]
-                    self.hi_scores_from_file.append([ls[0], float(ls[1])])
-        except IOError:
-            pass
-
-        self.update_hi_score_display()
+        self.get_hiscores()
         
+    
+    def get_hiscore_callback(self, req, result):
+        self.hi_scores_list = [r.split("|") for r in result.split("<br>") if len(r.split("|")) == 2]
+        print self.hi_scores_list
+        if self.saved: return
 
-        # now test if the user's score is over min(self.hi_scores_from_file)
-        if self.game_score >= min([float(t[1]) for t in self.hi_scores_list]) or len(self.hi_scores_from_file) == 0:
+        if self.game_score >= min([float(t[1]) for t in self.hi_scores_list]):
             self.get_name_widget = GetNameInput()
             popup = Popup(title='Congratulations!', content = self.get_name_widget, size_hint=(.4,.4))
             self.get_name_widget.bind(ok = popup.dismiss)
@@ -1530,36 +1526,33 @@ class ReplayScreen(Screen):
             popup.open()
         else:
             log.send_to_logs()
-    
+
+    def get_hiscores(self):
+        print "getting hi_scores"
+        server_url = 'http://sleepy-anchorage-4701.herokuapp.com/get_hiscore'
+        UrlRequest(server_url, self.get_hiscore_callback, method='GET')
+
     def get_name_popup_closed(self, *largs):
-        print self.get_name_widget.text 
         log.record_data('player_name', self.get_name_widget.text)
         log.send_to_logs()
-
         if self.get_name_widget.text == "": return
 
-        if len(self.hi_scores_from_file) == 5:
-            self.hi_scores_from_file = sorted([[self.get_name_widget.text, self.game_score]] + sorted(self.hi_scores_from_file, key=lambda t: t[1])[1:], key=lambda t: t[1], reverse=True)
-        else:
-            self.hi_scores_from_file = sorted([[self.get_name_widget.text, self.game_score]] + sorted(self.hi_scores_from_file, key=lambda t: t[1]), key=lambda t: t[1], reverse=True)
-        
-        self.update_hi_score_display()
-        self.write_hi_scores_to_file()
+        server_url = 'http://sleepy-anchorage-4701.herokuapp.com/set_hiscore?'
+        params = urllib.urlencode({'name': self.get_name_widget.text, 'score': self.game_score})
+        UrlRequest(server_url + params, self.set_hiscore_callback, method='POST')
 
-    def update_hi_score_display(self):
-        for idx, score in enumerate(sorted(self.hi_scores_from_file, key=lambda t: t[1], reverse=True)):
-            self.hi_scores_list[idx] = (score[0], str(int(score[1])))
 
-    def write_hi_scores_to_file(self):
-        with open('hi_scores', 'w') as hi_score_file:
-            for line in self.hi_scores_list:
-                hi_score_file.write(line[0]+ ": " + str(line[1]) + '\n')
+    def set_hiscore_callback(self, req, result):
+        # now that score has successfully been saved, pull the hiscores again.
+        self.saved = True
+        self.get_hiscores()
 
     def button_callback(self, btn_id):
         if btn_id == 'quit':
             Window.close()
         elif btn_id == 'new':
             log.clear()
+            self.saved = False
             self.parent.remove_widget(self.manager.get_screen('game'))
             self.parent.add_widget(RunningGame(name='game'))
             self.manager.current = 'game'
