@@ -821,7 +821,8 @@ class WorldObject(Widget):
     speed_multiplier = NumericProperty(1)
     game = ObjectProperty(None)
     current_goldcoin_x = NumericProperty(0)
-
+    current_goldcoin_y = NumericProperty(0)
+    active_platform = StringProperty(None)
 
     def __init__(self, **kwargs):
         super(WorldObject, self).__init__(**kwargs)
@@ -839,6 +840,7 @@ class WorldObject(Widget):
         if world_object.type == 'goldcoin':
             world_object.animation_controller = AnimationController('goldcoin', 'resting')
             self.current_goldcoin_x = plat_x
+            self.current_goldcoin_y = plat_y
 
         elif world_object.type == 'redcoin':
             world_object.animation_controller = AnimationController('redcoin', 'resting')
@@ -864,21 +866,15 @@ class WorldObject(Widget):
     def add_coin_line(self,plat_x,plat_y,plat_size, platform):
 
         if not platform.earth:
+            plat_x = platform.x - 32 
             plat_tile_size = platform.tile_size[0]
-            plat_x = platform.x - 32
             chosen_plat = 0
             last_plat = 1
-            # for i in platform.platform_heights:
-            #     plat_x += 64
-            #     for l in i:
-            #         plat_y = int(l) + 32
-            #         goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
-            #         self.world_objects.append(goldcoin)
-
+            
             for i in platform.platform_heights:
                 plat_x += 64
                 h = []
-                coin_in_row = False
+
                 for l in i:
                     h.append(int(l))
 
@@ -893,21 +889,41 @@ class WorldObject(Widget):
                     except IndexError:
                         print 'out of index'
 
-                if plat_x - self.current_goldcoin_x > 50:
+                if abs(chosen_plat - self.current_goldcoin_y) > 300 and plat_x - self.current_goldcoin_x < 200:
+                    continue
+
+                if self.active_platform == 'earth':
+                    self.active_platform = 'scaffold'
+                    if plat_x - self.current_goldcoin_x < 120 * self.game.global_speed:
+                        self.current_goldcoin_y = chosen_plat + 32
+                        continue
+
+                if plat_x - self.current_goldcoin_x > 60:
                     plat_y = chosen_plat + 32
+
+                    if plat_x - self.current_goldcoin_x < 120 and abs(plat_y - self.current_goldcoin_y) > 120:
+                        continue
+
+                    if abs(plat_y - self.current_goldcoin_y) > 20:
+                        self.current_goldcoin_y = plat_y
+                        continue
+
                     goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
                     self.world_objects.append(goldcoin)
                 
         else:
-            print 'plat x is', plat_x, 'coin x is', self.current_goldcoin_x
-            if plat_x - self.current_goldcoin_x > 50: 
+            if plat_x - self.current_goldcoin_x > 120 and abs(plat_y - self.current_goldcoin_y) < 400: 
+                self.active_platform = 'earth'
                 plat_x -= 32
                 plat_y += 32
                 num_of_coins = plat_size / 64
                 for i in range(num_of_coins):
                     plat_x += 64
+                    if abs(plat_y - self.current_goldcoin_y) > 300 and plat_x - self.current_goldcoin_x < 200:
+                        continue
                     goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
                     self.world_objects.append(goldcoin)
+
 
     def add_coin_arc(self,plat_x,plat_y,plat_size):
         plat_x -= 16
