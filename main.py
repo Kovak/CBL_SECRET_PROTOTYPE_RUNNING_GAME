@@ -820,6 +820,7 @@ class WorldObject(Widget):
     texture = StringProperty(None)
     speed_multiplier = NumericProperty(1)
     game = ObjectProperty(None)
+    current_goldcoin_x = NumericProperty(0)
 
 
     def __init__(self, **kwargs):
@@ -837,6 +838,7 @@ class WorldObject(Widget):
 
         if world_object.type == 'goldcoin':
             world_object.animation_controller = AnimationController('goldcoin', 'resting')
+            self.current_goldcoin_x = plat_x
 
         elif world_object.type == 'redcoin':
             world_object.animation_controller = AnimationController('redcoin', 'resting')
@@ -864,21 +866,48 @@ class WorldObject(Widget):
         if not platform.earth:
             plat_tile_size = platform.tile_size[0]
             plat_x = platform.x - 32
+            chosen_plat = 0
+            last_plat = 1
+            # for i in platform.platform_heights:
+            #     plat_x += 64
+            #     for l in i:
+            #         plat_y = int(l) + 32
+            #         goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
+            #         self.world_objects.append(goldcoin)
+
             for i in platform.platform_heights:
                 plat_x += 64
+                h = []
+                coin_in_row = False
                 for l in i:
-                    plat_y = int(l) + 32
+                    h.append(int(l))
+
+                if last_plat in h:
+                    print 'continue plat line'
+
+                else:
+                    try: 
+                        chosen_plat = random.choice(h)
+                        last_plat = chosen_plat
+
+                    except IndexError:
+                        print 'out of index'
+
+                if plat_x - self.current_goldcoin_x > 50:
+                    plat_y = chosen_plat + 32
                     goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
                     self.world_objects.append(goldcoin)
-
+                
         else:
-            plat_x -= 32
-            plat_y += 32
-            num_of_coins = plat_size / 64
-            for i in range(num_of_coins):
-                plat_x += 64
-                goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
-                self.world_objects.append(goldcoin)
+            print 'plat x is', plat_x, 'coin x is', self.current_goldcoin_x
+            if plat_x - self.current_goldcoin_x > 50: 
+                plat_x -= 32
+                plat_y += 32
+                num_of_coins = plat_size / 64
+                for i in range(num_of_coins):
+                    plat_x += 64
+                    goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
+                    self.world_objects.append(goldcoin)
 
     def add_coin_arc(self,plat_x,plat_y,plat_size):
         plat_x -= 16
@@ -912,15 +941,14 @@ class WorldObject(Widget):
                 plat_size = platform.size[0]
                 weight_layout_options = {1:10,2:3,3:3,4:2}
                 coin_layout_choice = random.choice([k for k in weight_layout_options for dummy in range(weight_layout_options[k])])
-                print coin_layout_choice
-                if coin_layout_choice == 1:
-                    self.add_coin_line(plat_x, plat_y, plat_size, platform)
-                if coin_layout_choice == 2:
-                    self.add_coin_arc(plat_x, plat_y, plat_size)
-                if coin_layout_choice == 3:
-                    self.add_end_plat_coin_arc(plat_x, plat_y, plat_size)
-                if coin_layout_choice== 4:
-                    self.add_redcoin(plat_x, plat_y, plat_size)  
+                # if coin_layout_choice == 1:
+                self.add_coin_line(plat_x, plat_y, plat_size, platform)
+                # if coin_layout_choice == 2:
+                #     self.add_coin_arc(plat_x, plat_y, plat_size)
+                # if coin_layout_choice == 3:
+                    # self.add_end_plat_coin_arc(plat_x, plat_y, plat_size)
+                # if coin_layout_choice == 4:
+                #     self.add_redcoin(plat_x, plat_y, plat_size)  
 
     def _advance_time(self,dt):
         scroll_multiplier = self.speed * self.speed_multiplier * dt 
@@ -938,6 +966,8 @@ class WorldObject(Widget):
                     del world_object
                 else:
                     world_object.x -= scroll_multiplier
+
+        self.current_goldcoin_x -= scroll_multiplier
 
     def _check_collision(self):
         for world_object in self.world_objects:
