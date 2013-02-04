@@ -866,14 +866,22 @@ class WorldObject(Widget):
     def add_coin_line(self,plat_x,plat_y,plat_size, platform):
 
         if not platform.earth:
+
+            if abs(plat_y - self.current_goldcoin_y) > 400:
+                return
+
             plat_x = platform.x - 32 
             plat_tile_size = platform.tile_size[0]
             chosen_plat = 0
             last_plat = 1
+            placing_on_platform = False
             
             for i in platform.platform_heights:
                 plat_x += 64
                 h = []
+
+                if plat_x > (platform.x + plat_size - 32):
+                    break
 
                 for l in i:
                     h.append(int(l))
@@ -889,14 +897,14 @@ class WorldObject(Widget):
                     except IndexError:
                         print 'out of index'
 
-                if abs(chosen_plat - self.current_goldcoin_y) > 300 and plat_x - self.current_goldcoin_x < 200:
-                    continue
-
                 if self.active_platform == 'earth':
                     self.active_platform = 'scaffold'
-                    if plat_x - self.current_goldcoin_x < 120 * self.game.global_speed:
+                    if plat_x - self.current_goldcoin_x < 60 * self.game.global_speed:
                         self.current_goldcoin_y = chosen_plat + 32
                         continue
+
+                if abs(chosen_plat - self.current_goldcoin_y) > 300 and plat_x - self.current_goldcoin_x < 200:
+                    continue
 
                 if plat_x - self.current_goldcoin_x > 60:
                     plat_y = chosen_plat + 32
@@ -904,19 +912,31 @@ class WorldObject(Widget):
                     if plat_x - self.current_goldcoin_x < 120 and abs(plat_y - self.current_goldcoin_y) > 120:
                         continue
 
-                    if abs(plat_y - self.current_goldcoin_y) > 20:
+                    if placing_on_platform and abs(plat_y - self.current_goldcoin_y) > 20:
                         self.current_goldcoin_y = plat_y
                         continue
 
                     goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
                     self.world_objects.append(goldcoin)
+                    placing_on_platform = True
                 
         else:
+
+            if abs(plat_y - self.current_goldcoin_y) > 400:
+                return
+
             if plat_x - self.current_goldcoin_x > 120 and abs(plat_y - self.current_goldcoin_y) < 400: 
                 self.active_platform = 'earth'
                 plat_x -= 32
                 plat_y += 32
-                num_of_coins = plat_size / 64
+                num_of_coins = int(plat_size / 64)
+
+                if num_of_coins == 1:
+                    plat_x += (plat_size/2 + 32)
+                    goldcoin = self.create_world_object('goldcoin', plat_y, plat_x)
+                    self.world_objects.append(goldcoin)
+                    return
+
                 for i in range(num_of_coins):
                     plat_x += 64
                     if abs(plat_y - self.current_goldcoin_y) > 300 and plat_x - self.current_goldcoin_x < 200:
@@ -955,16 +975,17 @@ class WorldObject(Widget):
                 plat_x = platform.x
                 plat_y = platform.y + platform.size[1]
                 plat_size = platform.size[0]
-                weight_layout_options = {1:10,2:3,3:3,4:2}
+                # weight_layout_options = {1:10,2:3,3:3,4:2}
+                weight_layout_options = {1:10,4:1}
                 coin_layout_choice = random.choice([k for k in weight_layout_options for dummy in range(weight_layout_options[k])])
-                # if coin_layout_choice == 1:
-                self.add_coin_line(plat_x, plat_y, plat_size, platform)
+                if coin_layout_choice == 1:
+                    self.add_coin_line(plat_x, plat_y, plat_size, platform)
                 # if coin_layout_choice == 2:
                 #     self.add_coin_arc(plat_x, plat_y, plat_size)
                 # if coin_layout_choice == 3:
                     # self.add_end_plat_coin_arc(plat_x, plat_y, plat_size)
-                # if coin_layout_choice == 4:
-                #     self.add_redcoin(plat_x, plat_y, plat_size)  
+                if coin_layout_choice == 4:
+                    self.add_redcoin(plat_x, plat_y, plat_size)  
 
     def _advance_time(self,dt):
         scroll_multiplier = self.speed * self.speed_multiplier * dt 
